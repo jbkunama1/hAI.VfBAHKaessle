@@ -1,0 +1,66 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-10">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-3 gap-2">
+      <div>
+        <h1 class="h4 mb-1">Offene Beträge pro Spieler</h1>
+        <p class="small text-muted mb-0">
+          Übersicht aller Monate mit den jeweiligen Biermengen und Euro-Beträgen pro Spieler (theoretische Kassensumme).
+        </p>
+      </div>
+      <div class="small text-muted">
+        Ein Bier = {{ '%.2f'|format(beer_price) }} €
+      </div>
+    </div>
+
+    {% if month_rows %}
+      <div class="accordion" id="balancesAccordion">
+        {% for month in month_rows %}
+          <div class="accordion-item mb-2">
+            <h2 class="accordion-header" id="heading-{{ month.ym }}">
+              <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ month.ym }}" aria-expanded="{{ 'true' if loop.first else 'false' }}" aria-controls="collapse-{{ month.ym }}">
+                Monat {{ month.ym }} &mdash; Gesamt: {{ month.total_beers }} Bier(e) / {{ '%.2f'|format(month.total_euros) }} €
+              </button>
+            </h2>
+            <div id="collapse-{{ month.ym }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" aria-labelledby="heading-{{ month.ym }}" data-bs-parent="#balancesAccordion">
+              <div class="accordion-body">
+                <div class="table-responsive small">
+                  <table class="table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Spieler</th>
+                        <th class="text-end">Biere</th>
+                        <th class="text-end">Betrag (€)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for row in month.entries %}
+                        <tr>
+                          <td>{{ row.username }}</td>
+                          <td class="text-end">{{ row.beers }}</td>
+                          <td class="text-end">{{ '%.2f'|format(row.euros) }}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                      <tr>
+                        <th>Gesamt</th>
+                        <th class="text-end">{{ month.total_beers }}</th>
+                        <th class="text-end">{{ '%.2f'|format(month.total_euros) }}</th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted">Es sind noch keine Einträge vorhanden.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

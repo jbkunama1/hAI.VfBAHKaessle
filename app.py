@@ -429,6 +429,67 @@
             )
             return response
 
+
+@app.route("/admin/report/balances")
+@login_required
+@admin_required
+def admin_report_balances():
+    db = get_db()
+    beer_price = app.config["BEER_PRICE"]
+
+    rows = db.execute(
+        """
+        SELECT
+            u.username AS username,
+            strftime('%Y-%m', b.drinking_date) AS ym,
+            COALESCE(SUM(b.amount), 0) AS beers
+        FROM users u
+        JOIN beers b ON u.id = b.user_id
+        GROUP BY u.username, ym
+        ORDER BY ym DESC, u.username
+        """
+    ).fetchall()
+
+    data = {}
+    months = []
+    for r in rows:
+        ym = r["ym"]
+        if ym not in data:
+            data[ym] = {}
+            months.append(ym)
+        data[ym][r["username"]] = r["beers"]
+
+    users = [r["username"] for r in db.execute("SELECT username FROM users ORDER BY username").fetchall()]
+
+    month_rows = []
+    for ym in months:
+        entries = []
+        total_beers = 0
+        total_euros = 0.0
+        for username in users:
+            beers = data.get(ym, {}).get(username, 0)
+            euros = beers * beer_price
+            total_beers += beers
+            total_euros += euros
+            entries.append({
+                "username": username,
+                "beers": beers,
+                "euros": euros,
+            })
+        month_rows.append({
+            "ym": ym,
+            "entries": entries,
+            "total_beers": total_beers,
+            "total_euros": total_euros,
+        })
+
+    return render_template(
+        "admin_report_balances.html",
+        month_rows=month_rows,
+        users=users,
+        beer_price=beer_price,
+    )
+
         return app
 
 
