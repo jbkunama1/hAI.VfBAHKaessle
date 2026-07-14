@@ -1,6 +1,15 @@
 
 # hAI.VfBAHKaessle – VfB Grötzingen AH Bierkässle
 
+
+<p align="center">
+  <a href="https://github.com/DEIN-USER/hAI.VfBAHKaessle"><img src="https://img.shields.io/github/stars/DEIN-USER/hAI.VfBAHKaessle?style=flat-square" alt="GitHub stars"></a>
+  <a href="https://github.com/DEIN-USER/hAI.VfBAHKaessle/actions"><img src="https://img.shields.io/github/actions/workflow/status/DEIN-USER/hAI.VfBAHKaessle/trufflehog.yml?style=flat-square&label=trufflehog" alt="TruffleHog scan"></a>
+  <a href="https://github.com/DEIN-USER/hAI.VfBAHKaessle/blob/main/LICENSE"><img src="https://img.shields.io/github/license/DEIN-USER/hAI.VfBAHKaessle?style=flat-square" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/docker-ready-brightgreen?style=flat-square" alt="Docker ready">
+</p>
+
 Flask-Webapp mit SQLite-Backend für das AH-Bierkässle des VfB Grötzingen, inklusive Telegram-Bot
 und einer kleinen GitHub-Pages-Startseite (`index.html`).
 
