@@ -1,0 +1,62 @@
+
+body {
+  background: radial-gradient(circle at top left, #28313b 0, #1c1f26 45%, #111318 100%);
+  color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.navbar-brand {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+}
+
+.card {
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  background: rgba(17, 19, 24, 0.92);
+}
+
+.btn-primary, .btn-success {
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #00b894, #00cec9);
+  border: none;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #6ab04c, #badc58);
+  border: none;
+  color: #111318;
+}
+
+.btn-success:hover {
+  filter: brightness(1.03);
+}
+
+.flash-wrapper {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 1020;
+}
+
+table thead th {
+  border-bottom-width: 1px;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 576px) {
+  .navbar-brand {
+    font-size: 0.8rem;
+  }
+}

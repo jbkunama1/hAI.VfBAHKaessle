@@ -1,0 +1,57 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h1 class="h4 mb-3">Biere eintragen</h1>
+        <p class="small text-muted mb-3">Mittwochs nach dem Training hier die Anzahl der getrunkenen Biere eintragen. Ein Bier = {{ '%.2f'|format(beer_price) }} €.</p>
+        <form method="post" novalidate>
+          <div class="mb-3">
+            <label for="drinking_date" class="form-label">Datum</label>
+            <input type="date" class="form-control" id="drinking_date" name="drinking_date" value="{{ today.isoformat() }}" required>
+          </div>
+          <div class="mb-3">
+            <label for="amount" class="form-label">Anzahl Biere</label>
+            <input type="number" class="form-control" id="amount" name="amount" min="1" step="1" required>
+          </div>
+          <button type="submit" class="btn btn-success w-100">Eintrag speichern</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-7">
+    <div class="card shadow-sm h-100">
+      <div class="card-body d-flex flex-column">
+        <h2 class="h5 mb-3">Letzte Einträge von {{ user.username }}</h2>
+        {% if entries %}
+          <div class="table-responsive small flex-grow-1">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Datum</th>
+                  <th class="text-end">Biere</th>
+                  <th>Erfasst am</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for e in entries %}
+                  <tr>
+                    <td>{{ e.drinking_date }}</td>
+                    <td class="text-end">{{ e.amount }}</td>
+                    <td>{{ e.created_at }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted mb-0">Noch keine Einträge vorhanden.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
