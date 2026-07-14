@@ -1,0 +1,30 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6 col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h1 class="h4 mb-3">Eintrag bearbeiten</h1>
+        <p class="small text-muted mb-3">
+          Spieler: <strong>{{ entry.username }}</strong>
+        </p>
+        <form method="post" novalidate>
+          <div class="mb-3">
+            <label for="drinking_date" class="form-label">Datum</label>
+            <input type="date" class="form-control" id="drinking_date" name="drinking_date" value="{{ entry.drinking_date }}" required>
+          </div>
+          <div class="mb-3">
+            <label for="amount" class="form-label">Anzahl Biere</label>
+            <input type="number" class="form-control" id="amount" name="amount" value="{{ entry.amount }}" min="1" step="1" required>
+          </div>
+          <div class="d-flex justify-content-between">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">Abbrechen</a>
+            <button type="submit" class="btn btn-primary">Speichern</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

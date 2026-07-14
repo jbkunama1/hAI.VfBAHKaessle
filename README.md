@@ -190,3 +190,16 @@ volumes:
 - Zugriff auf die Web-App über einen Reverse Proxy (nginx, Traefik, Cloudflare Tunnel) absichern.
 - Volume `bierkaessle_data` regelmäßig sichern (Backups).
 - Telegram-Bot-Token niemals ins Repo commiten, sondern nur als ENV/Secret hinterlegen.
+
+## Admin-Funktionen
+
+Für Admins (erster registrierter User oder über `ADMIN_USERNAMES` konfiguriert) steht ein eigener Bereich zur Verfügung:
+
+- Überblick über alle Nutzer (Biere, Euro, letztes Datum, Rolle)
+- Liste der letzten Einträge aller Spieler (global)
+- Einträge bearbeiten (Datum und Anzahl ändern)
+- Einträge löschen (z. B. bei Fehlbuchungen)
+- CSV-Export aller Einträge eines Monats: `username, date, amount`
+
+Zugriff auf das Admin-Panel erfolgt über den Link **„Admin“** in der Navigation.
+

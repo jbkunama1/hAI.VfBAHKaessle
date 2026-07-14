@@ -7,58 +7,191 @@
     <title>hAI.VfBAHKaessle – VfB Grötzingen AH Bierkässle</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+      :root {
+        --bg: #f5f5fb;
+        --card-bg: #ffffff;
+        --border-subtle: rgba(15, 23, 42, 0.08);
+        --accent: #2563eb;
+        --accent-soft: rgba(37, 99, 235, 0.08);
+      }
+
       body {
+        min-height: 100vh;
+        margin: 0;
+        background: radial-gradient(circle at top left, #e0ecff 0, #f5f5fb 40%, #fdfdfd 100%);
+        color: #0f172a;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      .page-shell {
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: radial-gradient(circle at top left, #28313b 0, #1c1f26 45%, #111318 100%);
-        color: #f8f9fa;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        padding: 2.5rem 1.5rem;
       }
-      .card {
-        border-radius: 1.25rem;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(14px);
-        background: rgba(17, 19, 24, 0.96);
+
+      .card-root {
+        border-radius: 1.5rem;
+        border: 1px solid var(--border-subtle);
+        background: var(--card-bg);
+        box-shadow:
+          0 20px 40px rgba(15, 23, 42, 0.08),
+          0 0 0 1px rgba(255, 255, 255, 0.8);
       }
+
+      .badge-pill {
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 0.75rem;
+        padding: 0.35rem 0.8rem;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .stack-label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #64748b;
+      }
+
       a { text-decoration: none; }
+
+      .btn-soft {
+        border-radius: 999px;
+        border: 1px solid var(--border-subtle);
+        background: #ffffff;
+        color: #0f172a;
+      }
+
+      .btn-soft:hover {
+        background: #f8fafc;
+        border-color: rgba(15, 23, 42, 0.12);
+      }
+
+      .btn-accent {
+        border-radius: 999px;
+        border: none;
+        background: linear-gradient(135deg, #2563eb, #0ea5e9);
+        color: #ffffff;
+        font-weight: 600;
+      }
+
+      .btn-accent:hover {
+        filter: brightness(1.03);
+      }
+
+      .code-inline {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+        font-size: 0.8rem;
+        background: #0f172a0d;
+        border-radius: 999px;
+        padding: 0.15rem 0.55rem;
+      }
+
+      .list-tight li + li {
+        margin-top: 0.2rem;
+      }
+
+      .shield-row img {
+        margin-right: 0.3rem;
+        margin-bottom: 0.3rem;
+      }
+
+      @media (max-width: 768px) {
+        .page-shell { padding: 1.5rem 1.0rem; }
+      }
     </style>
   </head>
   <body>
-    <div class="container px-3 px-md-0">
-      <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-6">
-          <div class="card shadow-lg">
-            <div class="card-body p-4 p-md-5">
-              <h1 class="h3 mb-3">hAI.VfBAHKaessle</h1>
-              <p class="text-muted mb-3">VfB Grötzingen – AH Bierkässle</p>
-              <p class="mb-4">
-                Dieses Projekt ist eine kleine Flask-Webanwendung mit SQLite-Backend und Telegram-Bot
-                zur Erfassung der nach dem Training getrunkenen Biere der AH des VfB Grötzingen.
-              </p>
+    <div class="page-shell">
+      <div class="container px-0">
+        <div class="row justify-content-center">
+          <div class="col-12 col-lg-10 col-xl-8">
+            <div class="card card-root border-0">
+              <div class="card-body p-4 p-md-5">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+                  <div>
+                    <span class="badge-pill mb-2">VfB Grötzingen – AH Bierkässle</span>
+                    <h1 class="h3 mb-1">hAI.VfBAHKaessle</h1>
+                    <p class="text-muted mb-2">
+                      Web-App &amp; Telegram-Bot für das AH-Bierkässle: Biere nach dem Training erfassen,
+                      Monatsstände einsehen und alles sauber per SQLite verwalten.
+                    </p>
+                  </div>
+                  <div class="text-end">
+                    <div class="stack-label mb-1">Status &amp; Technik</div>
+                    <div class="shield-row">
+                      <img src="https://img.shields.io/github/stars/DEIN-USER/hAI.VfBAHKaessle?style=flat-square" alt="GitHub stars">
+                      <img src="https://img.shields.io/github/actions/workflow/status/DEIN-USER/hAI.VfBAHKaessle/trufflehog.yml?style=flat-square&label=trufflehog" alt="TruffleHog scan">
+                      <img src="https://img.shields.io/github/license/DEIN-USER/hAI.VfBAHKaessle?style=flat-square" alt="License: MIT">
+                      <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square" alt="Python 3.10+">
+                      <img src="https://img.shields.io/badge/docker-ready-brightgreen?style=flat-square" alt="Docker ready">
+                    </div>
+                  </div>
+                </div>
 
-              <h2 class="h5 mb-2">Schnellüberblick</h2>
-              <ul class="small mb-4">
-                <li>Web-UI für Registrierung, Login und Biereinträge</li>
-                <li>Monatsübersicht pro Spieler inkl. Euro-Betrag</li>
-                <li>Telegram-Bot zum Buchen der Biere und Abrufen des Status</li>
-                <li>Docker-/Portainer-Stack für einfachen Betrieb (Port 1904)</li>
-              </ul>
+                <div class="row g-4">
+                  <div class="col-12 col-md-6">
+                    <h2 class="h6 text-uppercase text-muted mb-2">Projektüberblick</h2>
+                    <ul class="small list-unstyled list-tight mb-3">
+                      <li>Flask-Web-App mit Login &amp; Biereinträgen</li>
+                      <li>SQLite-Backend im `instance/`-Ordner</li>
+                      <li>Monatsübersicht pro Spieler + Gesamtsumme</li>
+                      <li>Telegram-Bot zum Buchen &amp; Status abfragen</li>
+                      <li>Docker-/Portainer-Setup auf Port <span class="code-inline">1904</span></li>
+                    </ul>
 
-              <div class="d-flex flex-column gap-2 mb-4">
-                <a class="btn btn-success w-100" href="https://github.com/DEIN-USER/hAI.VfBAHKaessle" target="_blank" rel="noopener noreferrer">
-                  Zum GitHub-Repository
-                </a>
-                <a class="btn btn-outline-light w-100" href="README.html" target="_blank" rel="noopener noreferrer">
-                  README / Dokumentation ansehen
-                </a>
+                    <h3 class="h6 text-uppercase text-muted mb-2">Tech-Stack</h3>
+                    <ul class="small list-unstyled list-tight mb-0">
+                      <li><strong>Backend:</strong> Python, Flask, Gunicorn</li>
+                      <li><strong>Datenbank:</strong> SQLite</li>
+                      <li><strong>Bot:</strong> python-telegram-bot</li>
+                      <li><strong>UI:</strong> Bootstrap 5, responsive</li>
+                    </ul>
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <h2 class="h6 text-uppercase text-muted mb-2">Telegram-Flow (Kurzfassung)</h2>
+                    <ol class="small mb-3 ps-3">
+                      <li>Im Web einen Benutzer registrieren.</li>
+                      <li>Bot im Telegram starten, <span class="code-inline">/start</span>.</li>
+                      <li>Account verknüpfen: <span class="code-inline">/link deinusername</span>.</li>
+                      <li>Biere buchen: <span class="code-inline">/bier</span> oder <span class="code-inline">/bier 3</span>.</li>
+                      <li>Status abrufen: <span class="code-inline">/status</span>.</li>
+                    </ol>
+
+                    <h3 class="h6 text-uppercase text-muted mb-2">Deployment</h3>
+                    <p class="small mb-1">
+                      Für den Betrieb gibt es ein Docker-/Compose-Setup mit zwei Containern (Web &amp; Bot)
+                      und einem gemeinsamen Datenbank-Volume.
+                    </p>
+                    <p class="small text-muted mb-0">
+                      Details zu Installation, Docker-Stack und Telegram-Konfiguration findest du in der README im Repository.
+                    </p>
+                  </div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="d-flex flex-column flex-md-row gap-2 justify-content-between align-items-center">
+                  <div class="small text-muted">
+                    Repo-Name: <span class="code-inline">hAI.VfBAHKaessle</span>
+                  </div>
+                  <div class="d-flex flex-column flex-sm-row gap-2">
+                    <a class="btn btn-accent" href="https://github.com/DEIN-USER/hAI.VfBAHKaessle" target="_blank" rel="noopener noreferrer">
+                      Zum GitHub-Repository
+                    </a>
+                    <a class="btn btn-soft" href="README.md" target="_blank" rel="noopener noreferrer">
+                      README / Setup-Anleitung
+                    </a>
+                  </div>
+                </div>
               </div>
-
-              <p class="small text-muted mb-0">
-                Hinweis: Die eigentliche Web-App und der Bot laufen typischerweise in Docker-Containern
-                (z. B. über Portainer) und nicht direkt auf GitHub Pages.
-              </p>
             </div>
           </div>
         </div>
