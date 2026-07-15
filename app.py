@@ -71,8 +71,8 @@ def create_app(test_config=None):
         )
         db.commit()
 
-    @app.before_first_request
-    def ensure_db():
+    # Flask 3: before_first_request gibt es nicht mehr → direkt beim Start initialisieren
+    with app.app_context():
         init_db()
 
     # ---------------------- User/Role-Helpers ----------------------
