@@ -1,4 +1,3 @@
-import asyncio
 import os
 import sqlite3
 from datetime import date
@@ -21,6 +20,7 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             telegram_id INTEGER UNIQUE,
+            is_admin INTEGER NOT NULL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -39,16 +39,28 @@ def init_db():
 
 
 def get_conn():
-    return sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def get_user_by_telegram_id(tg_id: int):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE telegram_id = ?", (tg_id,))
+    user = cur.fetchone()
+    conn.close()
+    return user
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = (
         "Willkommen beim VfB Grötzingen AH Bierkässle Bot!\n\n"
         "Verfügbare Befehle:\n"
-        "/link <username> – deinen Telegram-Account mit einem Web-Account verknüpfen\n"
-        "/bier <anzahl> – Biere für heute buchen (Standard: 1)\n"
-        "/status – deinen Stand für den aktuellen Monat anzeigen"
+        "/link <username> – Telegram mit deinem Web-Account verknüpfen\n"
+        "/bier <anzahl> – Biere für heute eintragen (Standard: 1)\n"
+        "/status – deinen aktuellen Monatsstand anzeigen\n"
+        "/help – diese Hilfe anzeigen"
     )
     await update.message.reply_text(text)
 
@@ -59,47 +71,44 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not context.args:
-        await update.message.reply_text("Bitte: /link <username>")
+        await update.message.reply_text("Bitte so verwenden: /link <username>")
         return
 
     username = context.args[0].strip()
-    tg_id = update.effective_user.id
+    telegram_id = update.effective_user.id
 
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id FROM users WHERE username = ?", (username,))
-    row = cur.fetchone()
 
-    if row is None:
-        await update.message.reply_text(
-            "Benutzername nicht gefunden. Bitte zuerst im Web registrieren."
-        )
+    cur.execute("SELECT id, username FROM users WHERE username = ?", (username,))
+    user = cur.fetchone()
+
+    if user is None:
         conn.close()
+        await update.message.reply_text(
+            "Benutzername nicht gefunden. Bitte zuerst in der Web-App registrieren."
+        )
         return
 
-    cur.execute("UPDATE users SET telegram_id = ? WHERE id = ?", (tg_id, row[0]))
+    cur.execute(
+        "UPDATE users SET telegram_id = ? WHERE id = ?",
+        (telegram_id, user["id"]),
+    )
     conn.commit()
     conn.close()
 
     await update.message.reply_text(
-        f"Telegram-Konto mit Benutzer '{username}' verknüpft."
+        f"Telegram-Konto wurde mit '{user['username']}' verknüpft."
     )
 
 
-def _get_user_by_telegram(tg_id: int):
-    conn = get_conn()
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE telegram_id = ?", (tg_id,))
-    user = cur.fetchone()
-    conn.close()
-    return user
-
-
 async def bier(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user = _get_user_by_telegram(update.effective_user.id)
+    user = get_user_by_telegram_id(update.effective_user.id)
+
     if user is None:
-        await update.message.reply_text("Bitte zuerst mit /link <username> verknüpfen.")
+        await update.message.reply_text(
+            "Dein Telegram-Konto ist noch nicht verknüpft. Bitte zuerst /link <username> nutzen."
+        )
         return
 
     amount = 1
@@ -113,10 +122,11 @@ async def bier(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
 
     if amount <= 0:
-        await update.message.reply_text("Anzahl muss größer als 0 sein.")
+        await update.message.reply_text("Die Anzahl muss größer als 0 sein.")
         return
 
     today = date.today().isoformat()
+
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
@@ -129,22 +139,24 @@ async def bier(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     euros = amount * BEER_PRICE
     text = (
         f"Eingetragen: {amount} Bier(e) für heute ({today}).\n"
-        f"Das sind {euros:.2f} € zum aktuellen Satz."
+        f"Kosten: {euros:.2f} €"
     )
     await update.message.reply_text(text)
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user = _get_user_by_telegram(update.effective_user.id)
+    user = get_user_by_telegram_id(update.effective_user.id)
+
     if user is None:
-        await update.message.reply_text("Bitte zuerst mit /link <username> verknüpfen.")
+        await update.message.reply_text(
+            "Dein Telegram-Konto ist noch nicht verknüpft. Bitte zuerst /link <username> nutzen."
+        )
         return
 
     today = date.today()
     month_str = f"{today.year:04d}-{today.month:02d}"
 
     conn = get_conn()
-    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute(
         """
@@ -159,12 +171,13 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     beers = row["beers"] or 0
     euros = beers * BEER_PRICE
+
     await update.message.reply_text(
-        f"Dein Stand für {month_str}: {beers} Bier(e) = {euros:.2f} €."
+        f"Dein Stand für {month_str}: {beers} Bier(e) = {euros:.2f} €"
     )
 
 
-async def main() -> None:
+def main() -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN ist nicht gesetzt")
@@ -179,8 +192,8 @@ async def main() -> None:
     app.add_handler(CommandHandler("bier", bier))
     app.add_handler(CommandHandler("status", status))
 
-    await app.run_polling(close_loop=False)
+    app.run_polling()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
