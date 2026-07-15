@@ -136,7 +136,9 @@ def create_app(test_config=None):
             db = get_db()
 
             # Ersten Benutzer automatisch als Admin markieren
-            is_first_user = db.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"] == 0
+            is_first_user = db.execute(
+                "SELECT COUNT(*) AS c FROM users"
+            ).fetchone()["c"] == 0
             is_admin_val = 1 if is_first_user else 0
 
             try:
@@ -413,8 +415,7 @@ def create_app(test_config=None):
             output.append([r["username"], r["drinking_date"], r["amount"]])
 
         csv_lines = [",".join(str(col) for col in row) for row in output]
-        csv_data = "
-".join(csv_lines)
+        csv_data = "\n".join(csv_lines)
 
         response = make_response(csv_data)
         response.headers["Content-Type"] = "text/csv; charset=utf-8"
@@ -467,17 +468,21 @@ def create_app(test_config=None):
                 euros = beers * beer_price
                 total_beers += beers
                 total_euros += euros
-                entries.append({
-                    "username": username,
-                    "beers": beers,
-                    "euros": euros,
-                })
-            month_rows.append({
-                "ym": ym,
-                "entries": entries,
-                "total_beers": total_beers,
-                "total_euros": total_euros,
-            })
+                entries.append(
+                    {
+                        "username": username,
+                        "beers": beers,
+                        "euros": euros,
+                    }
+                )
+            month_rows.append(
+                {
+                    "ym": ym,
+                    "entries": entries,
+                    "total_beers": total_beers,
+                    "total_euros": total_euros,
+                }
+            )
 
         return render_template(
             "admin_report_balances.html",
