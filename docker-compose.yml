@@ -1,23 +1,21 @@
-
-version: "3.8"
-
 services:
   bierkaessle_web:
+    build: .
     image: haivfbahkaessle:latest
-    # build: .
     container_name: bierkaessle_web
     ports:
       - "1904:1904"
     environment:
       - SECRET_KEY=change-me
       - BEER_PRICE=1.50
+      - ADMIN_USERNAMES=daniel
     volumes:
       - bierkaessle_data:/app/instance
     restart: unless-stopped
 
   bierkaessle_bot:
+    build: .
     image: haivfbahkaessle:latest
-    # build: .
     container_name: bierkaessle_bot
     environment:
       - TELEGRAM_BOT_TOKEN=DEIN_TELEGRAM_BOT_TOKEN
