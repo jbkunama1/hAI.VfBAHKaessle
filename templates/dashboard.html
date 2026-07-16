@@ -1,4 +1,3 @@
-
 {% extends 'base.html' %}
 {% block content %}
 <div class="row g-4">
@@ -34,6 +33,8 @@
                   <th>Datum</th>
                   <th class="text-end">Biere</th>
                   <th>Erfasst am</th>
+                  <th>Bezahlt</th>
+                  <th>Zahlart</th>
                 </tr>
               </thead>
               <tbody>
@@ -42,6 +43,25 @@
                     <td>{{ e.drinking_date }}</td>
                     <td class="text-end">{{ e.amount }}</td>
                     <td>{{ e.created_at }}</td>
+                    <td>
+                      <form method="post" action="{{ url_for('update_payment', entry_id=e.id) }}" class="d-flex align-items-center gap-1">
+                        <input type="checkbox"
+                               name="is_paid"
+                               class="form-check-input"
+                               {% if e.is_paid %}checked{% endif %}
+                               onchange="this.form.submit()">
+                        <noscript>
+                          <button type="submit" class="btn btn-sm btn-outline-secondary">Speichern</button>
+                        </noscript>
+                    </td>
+                    <td>
+                        <select name="method" class="form-select form-select-sm" onchange="this.form.submit()">
+                          <option value="">–</option>
+                          <option value="BAR" {% if e.payment_method == 'BAR' %}selected{% endif %}>Bar</option>
+                          <option value="PAYPAL" {% if e.payment_method == 'PAYPAL' %}selected{% endif %}>PayPal</option>
+                        </select>
+                      </form>
+                    </td>
                   </tr>
                 {% endfor %}
               </tbody>
