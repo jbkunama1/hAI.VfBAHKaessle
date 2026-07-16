@@ -111,15 +111,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "/admin_zahlung <id> reset – Zahlung zurücksetzen"
         )
     text = (
-        "🍺 VfB Grötzingen AH Bierkässle Bot\n\n"
-        "Befehle:\n"
-        "/link <username> – Telegram mit Web-Account verknüpfen\n"
-        "/bier <anzahl> – Bier(e) für heute eintragen (Standard: 1)\n"
-        "/trinken <getränk> [anzahl] – Getränk eintragen (bier/radler/cola/wasser)\n"
-        "/getraenke – Preisliste anzeigen\n"
-        "/status – eigener Monatsstand\n"
-        "/liste – eigene Einträge diesen Monat\n"
-        "/help – diese Hilfe"
+        "🍺 VfB Grötzingen AH Bierkässle Bot\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📋 Befehle:\n"
+        "/link <username>          – Telegram mit Web-Account verknüpfen\n\n"
+        "🥤 Getränke eintragen:\n"
+        "/bier [anzahl]            – 🍺 Bier        1,50 €\n"
+        "/trinken radler [anzahl]  – 🍋 Radler       1,50 €\n"
+        "/trinken cola [anzahl]    – 🥤 Cola/Fanta   1,50 €\n"
+        "/trinken wasser [anzahl]  – 💧 Wasser       1,00 €\n"
+        "/getraenke                – vollständige Preisliste\n\n"
+        "📊 Auswertung:\n"
+        "/status  – eigener Monatsstand (Summe + offen/bezahlt)\n"
+        "/liste   – eigene Einzeleinträge diesen Monat\n\n"
+        "/help    – diese Hilfe"
         + admin_hint
     )
     await update.message.reply_text(text)
@@ -133,7 +138,8 @@ async def getraenke(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Zeigt die aktuelle Preisliste."""
     lines = ["🧾 Preisliste:\n"]
     for key, info in DRINK_CATALOG.items():
-        lines.append(f"{info['label']}: {info['price']:.2f} €  /{key}")
+        lines.append(f"{info['label']}: {info['price']:.2f} €  →  /trinken {key}")
+    lines.append("\nKurzform für Bier: /bier [anzahl]")
     await update.message.reply_text("\n".join(lines))
 
 
