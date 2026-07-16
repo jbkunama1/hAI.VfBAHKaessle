@@ -6,9 +6,9 @@ services:
     ports:
       - "1904:1904"
     environment:
-      - SECRET_KEY=change-me
-      - BEER_PRICE=1.50
-      - ADMIN_USERNAMES=daniel
+      - SECRET_KEY=${SECRET_KEY:-change-me}
+      - BEER_PRICE=${BEER_PRICE:-1.50}
+      - ADMIN_USERNAMES=${ADMIN_USERNAMES:-daniel}
     volumes:
       - bierkaessle_data:/app/instance
     restart: unless-stopped
@@ -18,8 +18,8 @@ services:
     image: haivfbahkaessle:latest
     container_name: bierkaessle_bot
     environment:
-      - TELEGRAM_BOT_TOKEN=DEIN_TELEGRAM_BOT_TOKEN
-      - BEER_PRICE=1.50
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - BEER_PRICE=${BEER_PRICE:-1.50}
     volumes:
       - bierkaessle_data:/app/instance
     command: ["python", "telegram_bot.py"]
