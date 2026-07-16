@@ -16,6 +16,16 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# ──────────────────────────── Getränke-Katalog ────────────────────────────
+DRINK_CATALOG = [
+    {"key": "bier",   "label": "🍺 Bier",           "price": 1.50},
+    {"key": "radler", "label": "🍋 Radler",          "price": 1.50},
+    {"key": "cola",   "label": "🥤 Cola/Fanta/Mezzo", "price": 1.50},
+    {"key": "wasser", "label": "💧 Wasser",           "price": 1.00},
+]
+DRINK_PRICE = {d["key"]: d["price"] for d in DRINK_CATALOG}
+DRINK_LABEL = {d["key"]: d["label"] for d in DRINK_CATALOG}
+
 
 def create_app(test_config=None):
     app = Flask(__name__)
@@ -64,6 +74,8 @@ def create_app(test_config=None):
                 user_id INTEGER NOT NULL,
                 drinking_date DATE NOT NULL,
                 amount INTEGER NOT NULL CHECK(amount > 0),
+                drink_type TEXT NOT NULL DEFAULT 'bier',
+                price_per_unit REAL NOT NULL DEFAULT 1.50,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id)
             );
@@ -80,6 +92,15 @@ def create_app(test_config=None):
             );
             """
         )
+        # Migration: Spalten ergaenzen falls noch nicht vorhanden (Bestandsdatenbank)
+        try:
+            db.execute("ALTER TABLE beers ADD COLUMN drink_type TEXT NOT NULL DEFAULT 'bier'")
+        except Exception:
+            pass
+        try:
+            db.execute("ALTER TABLE beers ADD COLUMN price_per_unit REAL NOT NULL DEFAULT 1.50")
+        except Exception:
+            pass
         db.commit()
 
     with app.app_context():
@@ -105,7 +126,12 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_roles():
         user = current_user()
-        return {"current_user_obj": user, "is_admin": is_admin_user(user)}
+        return {
+            "current_user_obj": user,
+            "is_admin": is_admin_user(user),
+            "drink_catalog": DRINK_CATALOG,
+            "drink_label": DRINK_LABEL,
+        }
 
     def login_required(view):
         from functools import wraps
@@ -191,7 +217,6 @@ def create_app(test_config=None):
     def _login_context():
         """Monatliche Zusammenfassung fuer die Login-Seite (schreibgeschuetzt)."""
         db = get_db()
-        beer_price = app.config["BEER_PRICE"]
         today = date.today()
         month_str = f"{today.year:04d}-{today.month:02d}"
 
@@ -199,38 +224,36 @@ def create_app(test_config=None):
             """
             SELECT
                 u.username,
-                COALESCE(SUM(b.amount), 0) AS beers,
-                COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount ELSE 0 END), 0) AS beers_paid,
-                COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount ELSE 0 END), 0) AS beers_open
+                COALESCE(SUM(b.amount), 0) AS total_drinks,
+                COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros,
+                COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS paid_euros,
+                COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS open_euros
             FROM users u
             LEFT JOIN beers b
                 ON u.id = b.user_id
                 AND strftime('%Y-%m', b.drinking_date) = ?
             LEFT JOIN payments p ON p.beer_id = b.id
             GROUP BY u.id
-            HAVING beers > 0
-            ORDER BY beers DESC
+            HAVING total_drinks > 0
+            ORDER BY total_euros DESC
             """,
             (month_str,),
         ).fetchall()
 
         summary = []
         for r in rows:
-            beers = r["beers"]
-            beers_paid = r["beers_paid"]
-            beers_open = r["beers_open"]
             summary.append({
                 "username": r["username"],
-                "beers": beers,
-                "total": round(beers * beer_price, 2),
-                "paid": round(beers_paid * beer_price, 2),
-                "open": round(beers_open * beer_price, 2),
+                "beers": r["total_drinks"],
+                "total": round(r["total_euros"], 2),
+                "paid": round(r["paid_euros"], 2),
+                "open": round(r["open_euros"], 2),
             })
 
         return {
             "monthly_summary": summary,
             "month_label": today.strftime("%B %Y"),
-            "beer_price": beer_price,
+            "beer_price": app.config["BEER_PRICE"],
         }
 
     @app.route("/logout")
@@ -255,6 +278,11 @@ def create_app(test_config=None):
         if request.method == "POST":
             amount_raw = request.form.get("amount", "0")
             date_raw = request.form.get("drinking_date") or str(date.today())
+            drink_type = request.form.get("drink_type", "bier")
+
+            if drink_type not in DRINK_PRICE:
+                drink_type = "bier"
+            price = DRINK_PRICE[drink_type]
 
             try:
                 amount = int(amount_raw)
@@ -262,11 +290,11 @@ def create_app(test_config=None):
                 amount = 0
 
             if amount <= 0:
-                flash("Bitte eine gueltige Bier-Anzahl eintragen.", "danger")
+                flash("Bitte eine gueltige Anzahl eintragen.", "danger")
             else:
                 db.execute(
-                    "INSERT INTO beers (user_id, drinking_date, amount) VALUES (?, ?, ?)",
-                    (user["id"], date_raw, amount),
+                    "INSERT INTO beers (user_id, drinking_date, amount, drink_type, price_per_unit) VALUES (?, ?, ?, ?, ?)",
+                    (user["id"], date_raw, amount, drink_type, price),
                 )
                 db.commit()
                 flash("Eintrag gespeichert.", "success")
@@ -279,6 +307,8 @@ def create_app(test_config=None):
                 b.id,
                 b.drinking_date,
                 b.amount,
+                b.drink_type,
+                b.price_per_unit,
                 b.created_at,
                 COALESCE(p.is_paid, 0) AS is_paid,
                 p.method AS payment_method
@@ -297,6 +327,8 @@ def create_app(test_config=None):
             entries=entries,
             today=date.today(),
             beer_price=app.config["BEER_PRICE"],
+            drink_catalog=DRINK_CATALOG,
+            drink_label=DRINK_LABEL,
         )
 
     @app.route("/summary")
@@ -318,7 +350,9 @@ def create_app(test_config=None):
 
         rows = db.execute(
             """
-            SELECT u.username, COALESCE(SUM(b.amount), 0) AS beers
+            SELECT u.username,
+                   COALESCE(SUM(b.amount), 0) AS total_drinks,
+                   COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros
             FROM users u
             LEFT JOIN beers b
               ON u.id = b.user_id
@@ -329,30 +363,29 @@ def create_app(test_config=None):
             (month_str,),
         ).fetchall()
 
-        beer_price = app.config["BEER_PRICE"]
         summary_data = []
-        total_beers = 0
+        total_drinks = 0
         total_euros = 0.0
 
         for row in rows:
-            beers = row["beers"] or 0
-            euros = beers * beer_price
-            total_beers += beers
+            drinks = row["total_drinks"] or 0
+            euros = row["total_euros"] or 0.0
+            total_drinks += drinks
             total_euros += euros
             summary_data.append(
                 {
                     "username": row["username"],
-                    "beers": beers,
-                    "euros": euros,
+                    "beers": drinks,
+                    "euros": round(euros, 2),
                 }
             )
 
         return render_template(
             "summary.html",
             summary_data=summary_data,
-            beer_price=beer_price,
-            total_beers=total_beers,
-            total_euros=total_euros,
+            beer_price=app.config["BEER_PRICE"],
+            total_beers=total_drinks,
+            total_euros=round(total_euros, 2),
             year=year,
             month=month,
         )
@@ -383,6 +416,8 @@ def create_app(test_config=None):
                 b.id,
                 b.drinking_date,
                 b.amount,
+                b.drink_type,
+                b.price_per_unit,
                 b.created_at,
                 u.username,
                 COALESCE(p.is_paid, 0) AS is_paid,
@@ -400,6 +435,7 @@ def create_app(test_config=None):
             users_stats=users_stats,
             recent_entries=recent_entries,
             beer_price=beer_price,
+            drink_label=DRINK_LABEL,
         )
 
     @app.route("/admin/entry/<int:entry_id>/edit", methods=["GET", "POST"])
@@ -409,7 +445,7 @@ def create_app(test_config=None):
         db = get_db()
         entry = db.execute(
             """
-            SELECT b.id, b.drinking_date, b.amount, u.username
+            SELECT b.id, b.drinking_date, b.amount, b.drink_type, b.price_per_unit, u.username
             FROM beers b
             JOIN users u ON u.id = b.user_id
             WHERE b.id = ?
@@ -423,22 +459,26 @@ def create_app(test_config=None):
         if request.method == "POST":
             amount_raw = request.form.get("amount", "0")
             date_raw = request.form.get("drinking_date") or str(date.today())
+            drink_type = request.form.get("drink_type", "bier")
+            if drink_type not in DRINK_PRICE:
+                drink_type = "bier"
+            price = DRINK_PRICE[drink_type]
             try:
                 amount = int(amount_raw)
             except ValueError:
                 amount = 0
             if amount <= 0:
-                flash("Bitte eine gueltige Bier-Anzahl eintragen.", "danger")
+                flash("Bitte eine gueltige Anzahl eintragen.", "danger")
             else:
                 db.execute(
-                    "UPDATE beers SET amount = ?, drinking_date = ? WHERE id = ?",
-                    (amount, date_raw, entry_id),
+                    "UPDATE beers SET amount = ?, drinking_date = ?, drink_type = ?, price_per_unit = ? WHERE id = ?",
+                    (amount, date_raw, drink_type, price, entry_id),
                 )
                 db.commit()
                 flash("Eintrag aktualisiert.", "success")
                 return redirect(url_for("admin_dashboard"))
 
-        return render_template("admin_edit_entry.html", entry=entry)
+        return render_template("admin_edit_entry.html", entry=entry, drink_catalog=DRINK_CATALOG)
 
     @app.route("/admin/entry/<int:entry_id>/delete", methods=["POST"])
     @login_required
@@ -469,7 +509,7 @@ def create_app(test_config=None):
 
         rows = db.execute(
             """
-            SELECT u.username, b.drinking_date, b.amount
+            SELECT u.username, b.drinking_date, b.amount, b.drink_type, b.price_per_unit
             FROM beers b
             JOIN users u ON u.id = b.user_id
             WHERE strftime('%Y-%m', b.drinking_date) = ?
@@ -478,9 +518,13 @@ def create_app(test_config=None):
             (month_str,),
         ).fetchall()
 
-        output = [["username", "date", "amount"]]
+        output = [["username", "date", "amount", "drink_type", "price_per_unit", "total"]]
         for r in rows:
-            output.append([r["username"], r["drinking_date"], r["amount"]])
+            output.append([
+                r["username"], r["drinking_date"], r["amount"],
+                r["drink_type"], r["price_per_unit"],
+                round(r["amount"] * r["price_per_unit"], 2)
+            ])
 
         csv_lines = [",".join(str(col) for col in row) for row in output]
         csv_data = "\n".join(csv_lines)
@@ -497,14 +541,14 @@ def create_app(test_config=None):
     @admin_required
     def admin_report_balances():
         db = get_db()
-        beer_price = app.config["BEER_PRICE"]
 
         rows = db.execute(
             """
             SELECT
                 u.username AS username,
                 strftime('%Y-%m', b.drinking_date) AS ym,
-                COALESCE(SUM(b.amount), 0) AS beers
+                COALESCE(SUM(b.amount), 0) AS total_drinks,
+                COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros
             FROM users u
             JOIN beers b ON u.id = b.user_id
             GROUP BY u.username, ym
@@ -512,14 +556,17 @@ def create_app(test_config=None):
             """
         ).fetchall()
 
-        data = {}
+        data_drinks = {}
+        data_euros = {}
         months = []
         for r in rows:
             ym = r["ym"]
-            if ym not in data:
-                data[ym] = {}
+            if ym not in data_drinks:
+                data_drinks[ym] = {}
+                data_euros[ym] = {}
                 months.append(ym)
-            data[ym][r["username"]] = r["beers"]
+            data_drinks[ym][r["username"]] = r["total_drinks"]
+            data_euros[ym][r["username"]] = r["total_euros"]
 
         users = [
             r["username"]
@@ -529,26 +576,26 @@ def create_app(test_config=None):
         month_rows = []
         for ym in months:
             entries = []
-            total_beers = 0
+            total_drinks = 0
             total_euros = 0.0
             for username in users:
-                beers = data.get(ym, {}).get(username, 0)
-                euros = beers * beer_price
-                total_beers += beers
+                drinks = data_drinks.get(ym, {}).get(username, 0)
+                euros = data_euros.get(ym, {}).get(username, 0.0)
+                total_drinks += drinks
                 total_euros += euros
                 entries.append(
                     {
                         "username": username,
-                        "beers": beers,
-                        "euros": euros,
+                        "beers": drinks,
+                        "euros": round(euros, 2),
                     }
                 )
             month_rows.append(
                 {
                     "ym": ym,
                     "entries": entries,
-                    "total_beers": total_beers,
-                    "total_euros": total_euros,
+                    "total_beers": total_drinks,
+                    "total_euros": round(total_euros, 2),
                 }
             )
 
@@ -556,7 +603,7 @@ def create_app(test_config=None):
             "admin_report_balances.html",
             month_rows=month_rows,
             users=users,
-            beer_price=beer_price,
+            beer_price=app.config["BEER_PRICE"],
         )
 
     @app.route("/entry/<int:entry_id>/payment", methods=["POST"])

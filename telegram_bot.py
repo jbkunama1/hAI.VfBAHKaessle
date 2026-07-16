@@ -9,6 +9,14 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 DB_PATH = os.path.join(os.getcwd(), "instance", "bierkaessle.sqlite3")
 BEER_PRICE = float(os.environ.get("BEER_PRICE", "1.50"))
 
+# ──────────────────────────── Getränke-Katalog ────────────────────────────
+DRINK_CATALOG = {
+    "bier":   {"label": "🍺 Bier",            "price": 1.50},
+    "radler": {"label": "🍋 Radler",           "price": 1.50},
+    "cola":   {"label": "🥤 Cola/Fanta/Mezzo",  "price": 1.50},
+    "wasser": {"label": "💧 Wasser",            "price": 1.00},
+}
+
 
 def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
@@ -29,6 +37,8 @@ def init_db():
             user_id INTEGER NOT NULL,
             drinking_date DATE NOT NULL,
             amount INTEGER NOT NULL CHECK(amount > 0),
+            drink_type TEXT NOT NULL DEFAULT 'bier',
+            price_per_unit REAL NOT NULL DEFAULT 1.50,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id)
         );
@@ -45,6 +55,15 @@ def init_db():
         );
         """
     )
+    # Migration: Spalten ergaenzen falls noch nicht vorhanden
+    try:
+        conn.execute("ALTER TABLE beers ADD COLUMN drink_type TEXT NOT NULL DEFAULT 'bier'")
+    except Exception:
+        pass
+    try:
+        conn.execute("ALTER TABLE beers ADD COLUMN price_per_unit REAL NOT NULL DEFAULT 1.50")
+    except Exception:
+        pass
     conn.commit()
     conn.close()
 
@@ -67,7 +86,6 @@ def get_user_by_telegram_id(tg_id: int):
 def is_admin(user) -> bool:
     if user is None:
         return False
-    # DB-Flag oder ENV-Whitelist
     if user["is_admin"]:
         return True
     admin_names = [n.strip() for n in os.environ.get("ADMIN_USERNAMES", "").split(",") if n.strip()]
@@ -96,7 +114,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "🍺 VfB Grötzingen AH Bierkässle Bot\n\n"
         "Befehle:\n"
         "/link <username> – Telegram mit Web-Account verknüpfen\n"
-        "/bier <anzahl> – Biere für heute eintragen (Standard: 1)\n"
+        "/bier <anzahl> – Bier(e) für heute eintragen (Standard: 1)\n"
+        "/trinken <getränk> [anzahl] – Getränk eintragen (bier/radler/cola/wasser)\n"
+        "/getraenke – Preisliste anzeigen\n"
         "/status – eigener Monatsstand\n"
         "/liste – eigene Einträge diesen Monat\n"
         "/help – diese Hilfe"
@@ -107,6 +127,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await start(update, context)
+
+
+async def getraenke(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Zeigt die aktuelle Preisliste."""
+    lines = ["🧾 Preisliste:\n"]
+    for key, info in DRINK_CATALOG.items():
+        lines.append(f"{info['label']}: {info['price']:.2f} €  /{key}")
+    await update.message.reply_text("\n".join(lines))
 
 
 async def link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -136,6 +164,7 @@ async def link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def bier(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Kurzbefehl: /bier [anzahl] – immer Bier à 1.50 €."""
     user = get_user_by_telegram_id(update.effective_user.id)
     if user is None:
         await update.message.reply_text("Nicht verknüpft. Bitte /link <username> nutzen.")
@@ -154,17 +183,68 @@ async def bier(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     today = date.today().isoformat()
+    price = DRINK_CATALOG["bier"]["price"]
     conn = get_conn()
     conn.execute(
-        "INSERT INTO beers (user_id, drinking_date, amount) VALUES (?, ?, ?)",
-        (user["id"], today, amount),
+        "INSERT INTO beers (user_id, drinking_date, amount, drink_type, price_per_unit) VALUES (?, ?, ?, 'bier', ?)",
+        (user["id"], today, amount, price),
     )
     conn.commit()
     conn.close()
 
-    euros = amount * BEER_PRICE
+    euros = amount * price
     await update.message.reply_text(
-        f"✅ {amount} Bier(e) für {today} eingetragen.\nKosten: {euros:.2f} €"
+        f"✅ {amount}× 🍺 Bier für {today} eingetragen.\nKosten: {euros:.2f} €"
+    )
+
+
+async def trinken(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Universalbefehl: /trinken <getränk> [anzahl]\nBeispiel: /trinken radler 2"""
+    user = get_user_by_telegram_id(update.effective_user.id)
+    if user is None:
+        await update.message.reply_text("Nicht verknüpft. Bitte /link <username> nutzen.")
+        return
+
+    if not context.args:
+        lines = ["Bitte so verwenden: /trinken <getränk> [anzahl]\n\nVerfügbare Getränke:"]
+        for key, info in DRINK_CATALOG.items():
+            lines.append(f"  {key} – {info['label']} ({info['price']:.2f} €)")
+        await update.message.reply_text("\n".join(lines))
+        return
+
+    drink_key = context.args[0].lower()
+    if drink_key not in DRINK_CATALOG:
+        await update.message.reply_text(
+            f"Unbekanntes Getränk '{drink_key}'.\nVerfügbar: {', '.join(DRINK_CATALOG.keys())}"
+        )
+        return
+
+    amount = 1
+    if len(context.args) >= 2:
+        try:
+            amount = int(context.args[1])
+        except ValueError:
+            await update.message.reply_text("Anzahl muss eine ganze Zahl sein.")
+            return
+
+    if amount <= 0:
+        await update.message.reply_text("Die Anzahl muss größer als 0 sein.")
+        return
+
+    today = date.today().isoformat()
+    info = DRINK_CATALOG[drink_key]
+    price = info["price"]
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO beers (user_id, drinking_date, amount, drink_type, price_per_unit) VALUES (?, ?, ?, ?, ?)",
+        (user["id"], today, amount, drink_key, price),
+    )
+    conn.commit()
+    conn.close()
+
+    euros = amount * price
+    await update.message.reply_text(
+        f"✅ {amount}× {info['label']} für {today} eingetragen.\nKosten: {euros:.2f} €"
     )
 
 
@@ -179,9 +259,10 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     row = conn.execute(
         """
         SELECT
-            COALESCE(SUM(b.amount), 0) AS beers,
-            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount ELSE 0 END), 0) AS paid,
-            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount ELSE 0 END), 0) AS open_b
+            COALESCE(SUM(b.amount), 0) AS total_drinks,
+            COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros,
+            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS paid_euros,
+            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS open_euros
         FROM beers b
         LEFT JOIN payments p ON p.beer_id = b.id
         WHERE b.user_id = ? AND strftime('%Y-%m', b.drinking_date) = ?
@@ -190,14 +271,11 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     ).fetchone()
     conn.close()
 
-    beers = row["beers"]
-    paid  = row["paid"]
-    open_b = row["open_b"]
     await update.message.reply_text(
         f"📊 Dein Stand {ms}:\n"
-        f"Biere gesamt:  {beers}  ({beers * BEER_PRICE:.2f} €)\n"
-        f"✅ Bezahlt:    {paid}  ({paid * BEER_PRICE:.2f} €)\n"
-        f"⚠️ Offen:      {open_b}  ({open_b * BEER_PRICE:.2f} €)"
+        f"Getränke gesamt:  {row['total_drinks']}  ({row['total_euros']:.2f} €)\n"
+        f"✅ Bezahlt:       {row['paid_euros']:.2f} €\n"
+        f"⚠️ Offen:         {row['open_euros']:.2f} €"
     )
 
 
@@ -212,7 +290,7 @@ async def liste(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     conn = get_conn()
     rows = conn.execute(
         """
-        SELECT b.id, b.drinking_date, b.amount,
+        SELECT b.id, b.drinking_date, b.amount, b.drink_type, b.price_per_unit,
                COALESCE(p.is_paid, 0) AS is_paid,
                p.method
         FROM beers b
@@ -229,17 +307,18 @@ async def liste(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     lines = [f"🍺 Deine Einträge {ms}:\n"]
-    total = 0
+    total_euros = 0.0
     for r in rows:
         status_icon = "✅" if r["is_paid"] else "⚠️"
         method = f" ({r['method']})".lower() if r["method"] else ""
-        euros = r["amount"] * BEER_PRICE
+        label = DRINK_CATALOG.get(r["drink_type"], {}).get("label", r["drink_type"])
+        euros = r["amount"] * r["price_per_unit"]
+        total_euros += euros
         lines.append(
             f"{status_icon} #{r['id']} | {r['drinking_date']} | "
-            f"{r['amount']} Bier = {euros:.2f} €{method}"
+            f"{r['amount']}× {label} = {euros:.2f} €{method}"
         )
-        total += r["amount"]
-    lines.append(f"\nGesamt: {total} Biere = {total * BEER_PRICE:.2f} €")
+    lines.append(f"\nGesamt: {total_euros:.2f} €")
     await update.message.reply_text("\n".join(lines))
 
 
@@ -257,15 +336,16 @@ async def admin_liste(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     rows = conn.execute(
         """
         SELECT u.username,
-               COALESCE(SUM(b.amount), 0) AS beers,
-               COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount ELSE 0 END), 0) AS paid,
-               COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount ELSE 0 END), 0) AS open_b
+               COALESCE(SUM(b.amount), 0) AS total_drinks,
+               COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros,
+               COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS paid_euros,
+               COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS open_euros
         FROM users u
         LEFT JOIN beers b ON u.id = b.user_id AND strftime('%Y-%m', b.drinking_date) = ?
         LEFT JOIN payments p ON p.beer_id = b.id
         GROUP BY u.id
-        HAVING beers > 0
-        ORDER BY beers DESC
+        HAVING total_drinks > 0
+        ORDER BY total_euros DESC
         """,
         (ms,),
     ).fetchall()
@@ -276,20 +356,19 @@ async def admin_liste(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
 
     lines = [f"📋 Monatsstand {ms}:\n"]
-    t_beers = t_paid = t_open = 0
+    t_drinks = t_paid = t_open = 0.0
     for r in rows:
-        beers  = r["beers"]
-        paid   = r["paid"]
-        open_b = r["open_b"]
-        t_beers += beers; t_paid += paid; t_open += open_b
+        t_drinks += r["total_drinks"]
+        t_paid += r["paid_euros"]
+        t_open += r["open_euros"]
         lines.append(
-            f"{r['username']}: {beers} 🍺 | "
-            f"✅ {paid * BEER_PRICE:.2f} € | "
-            f"⚠️ {open_b * BEER_PRICE:.2f} €"
+            f"{r['username']}: {r['total_drinks']} 🥤 | "
+            f"✅ {r['paid_euros']:.2f} € | "
+            f"⚠️ {r['open_euros']:.2f} €"
         )
     lines.append(
-        f"\n▶ Gesamt: {t_beers} 🍺\n"
-        f"✅ {t_paid * BEER_PRICE:.2f} €  ⚠️ {t_open * BEER_PRICE:.2f} €"
+        f"\n▶ Gesamt: {int(t_drinks)} Getränke\n"
+        f"✅ {t_paid:.2f} €  ⚠️ {t_open:.2f} €"
     )
     await update.message.reply_text("\n".join(lines))
 
@@ -306,13 +385,13 @@ async def admin_offen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     rows = conn.execute(
         """
         SELECT u.username,
-               COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount ELSE 0 END), 0) AS open_b
+               COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS open_euros
         FROM users u
         LEFT JOIN beers b ON u.id = b.user_id AND strftime('%Y-%m', b.drinking_date) = ?
         LEFT JOIN payments p ON p.beer_id = b.id
         GROUP BY u.id
-        HAVING open_b > 0
-        ORDER BY open_b DESC
+        HAVING open_euros > 0
+        ORDER BY open_euros DESC
         """,
         (ms,),
     ).fetchall()
@@ -324,7 +403,7 @@ async def admin_offen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     lines = [f"⚠️ Offene Beträge {ms}:\n"]
     for r in rows:
-        lines.append(f"{r['username']}: {r['open_b']} 🍺 = {r['open_b'] * BEER_PRICE:.2f} €")
+        lines.append(f"{r['username']}: {r['open_euros']:.2f} € offen")
     await update.message.reply_text("\n".join(lines))
 
 
@@ -403,6 +482,8 @@ def main() -> None:
     app.add_handler(CommandHandler("help",           help_cmd))
     app.add_handler(CommandHandler("link",           link))
     app.add_handler(CommandHandler("bier",           bier))
+    app.add_handler(CommandHandler("trinken",        trinken))
+    app.add_handler(CommandHandler("getraenke",      getraenke))
     app.add_handler(CommandHandler("status",         status))
     app.add_handler(CommandHandler("liste",          liste))
     app.add_handler(CommandHandler("admin_liste",    admin_liste))
