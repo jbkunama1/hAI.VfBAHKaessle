@@ -1,4 +1,3 @@
-
 {% extends 'base.html' %}
 {% block content %}
 <div class="row g-4">
@@ -6,7 +5,11 @@
     <div class="card shadow-sm">
       <div class="card-body">
         <h1 class="h4 mb-3">Admin-Übersicht</h1>
-            <p class="small mb-2"><a href="{{ url_for('admin_report_balances') }}" class="link-light">Offene Beträge / Monatsreport anzeigen</a></p>
+        <p class="small mb-2">
+          <a href="{{ url_for('admin_report_balances') }}" class="link-light">
+            Offene Beträge / Monatsreport anzeigen
+          </a>
+        </p>
         <p class="small text-muted mb-3">
           Zusammenfassung aller Nutzer und ihrer bisher eingetragenen Biere.
         </p>
@@ -28,7 +31,13 @@
                   <td class="text-end">{{ u.beers }}</td>
                   <td class="text-end">{{ '%.2f'|format((u.beers or 0) * beer_price) }}</td>
                   <td>{{ u.last_date or '-' }}</td>
-                  <td>{% if u.is_admin %}<span class="badge bg-primary">Admin</span>{% else %}<span class="badge bg-secondary">User</span>{% endif %}</td>
+                  <td>
+                    {% if u.is_admin %}
+                      <span class="badge bg-primary">Admin</span>
+                    {% else %}
+                      <span class="badge bg-secondary">User</span>
+                    {% endif %}
+                  </td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -51,7 +60,8 @@
           </div>
           <div class="col-4 col-sm-3">
             <label class="form-label form-label-sm" for="year">Jahr</label>
-            <input id="year" name="year" type="number" class="form-control form-control-sm" value="{{ now().year if false else 2026 }}">
+            <input id="year" name="year" type="number" class="form-control form-control-sm"
+                   value="{{ now().year if false else 2026 }}">
           </div>
           <div class="col-4 col-sm-4">
             <button type="submit" class="btn btn-sm btn-primary w-100">CSV exportieren</button>
@@ -77,6 +87,8 @@
                   <th>Datum</th>
                   <th class="text-end">Biere</th>
                   <th>Erfasst am</th>
+                  <th>Bezahlt</th>
+                  <th>Zahlart</th>
                   <th class="text-end">Aktionen</th>
                 </tr>
               </thead>
@@ -87,10 +99,39 @@
                     <td>{{ e.drinking_date }}</td>
                     <td class="text-end">{{ e.amount }}</td>
                     <td>{{ e.created_at }}</td>
+                    <td>
+                      <form method="post"
+                            action="{{ url_for('update_payment', entry_id=e.id) }}"
+                            class="d-flex align-items-center gap-1">
+                        <input type="checkbox"
+                               name="is_paid"
+                               class="form-check-input"
+                               {% if e.is_paid %}checked{% endif %}
+                               onchange="this.form.submit()">
+                        <noscript>
+                          <button type="submit" class="btn btn-sm btn-outline-secondary">
+                            Speichern
+                          </button>
+                        </noscript>
+                    </td>
+                    <td>
+                        <select name="method"
+                                class="form-select form-select-sm"
+                                onchange="this.form.submit()">
+                          <option value="">–</option>
+                          <option value="BAR" {% if e.payment_method == 'BAR' %}selected{% endif %}>Bar</option>
+                          <option value="PAYPAL" {% if e.payment_method == 'PAYPAL' %}selected{% endif %}>PayPal</option>
+                        </select>
+                      </form>
+                    </td>
                     <td class="text-end">
                       <div class="btn-group btn-group-sm" role="group">
-                        <a href="{{ url_for('admin_edit_entry', entry_id=e.id) }}" class="btn btn-outline-secondary">Ändern</a>
-                        <form method="post" action="{{ url_for('admin_delete_entry', entry_id=e.id) }}" class="d-inline" onsubmit="return confirm('Eintrag wirklich löschen?');">
+                        <a href="{{ url_for('admin_edit_entry', entry_id=e.id) }}"
+                           class="btn btn-outline-secondary">Ändern</a>
+                        <form method="post"
+                              action="{{ url_for('admin_delete_entry', entry_id=e.id) }}"
+                              class="d-inline"
+                              onsubmit="return confirm('Eintrag wirklich löschen?');">
                           <button type="submit" class="btn btn-outline-danger">Löschen</button>
                         </form>
                       </div>
