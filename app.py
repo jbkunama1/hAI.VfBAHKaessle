@@ -82,7 +82,6 @@ def create_app(test_config=None):
         )
         db.commit()
 
-    # Flask 3: before_first_request gibt es nicht mehr → direkt beim Start initialisieren
     with app.app_context():
         init_db()
 
@@ -146,7 +145,6 @@ def create_app(test_config=None):
 
             db = get_db()
 
-            # Ersten Benutzer automatisch als Admin markieren
             is_first_user = db.execute(
                 "SELECT COUNT(*) AS c FROM users"
             ).fetchone()["c"] == 0
@@ -180,7 +178,7 @@ def create_app(test_config=None):
 
             if user is None or not check_password_hash(user["password_hash"], password):
                 flash("Benutzername oder Passwort falsch.", "danger")
-                return render_template("login.html")
+                return render_template("login.html", **_login_context())
 
             session.clear()
             session["user_id"] = user["id"]
@@ -188,7 +186,52 @@ def create_app(test_config=None):
             flash(f"Willkommen, {user['username']}!", "success")
             return redirect(url_for("dashboard"))
 
-        return render_template("login.html")
+        return render_template("login.html", **_login_context())
+
+    def _login_context():
+        """Monatliche Zusammenfassung fuer die Login-Seite (schreibgeschuetzt)."""
+        db = get_db()
+        beer_price = app.config["BEER_PRICE"]
+        today = date.today()
+        month_str = f"{today.year:04d}-{today.month:02d}"
+
+        rows = db.execute(
+            """
+            SELECT
+                u.username,
+                COALESCE(SUM(b.amount), 0) AS beers,
+                COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount ELSE 0 END), 0) AS beers_paid,
+                COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount ELSE 0 END), 0) AS beers_open
+            FROM users u
+            LEFT JOIN beers b
+                ON u.id = b.user_id
+                AND strftime('%Y-%m', b.drinking_date) = ?
+            LEFT JOIN payments p ON p.beer_id = b.id
+            GROUP BY u.id
+            HAVING beers > 0
+            ORDER BY beers DESC
+            """,
+            (month_str,),
+        ).fetchall()
+
+        summary = []
+        for r in rows:
+            beers = r["beers"]
+            beers_paid = r["beers_paid"]
+            beers_open = r["beers_open"]
+            summary.append({
+                "username": r["username"],
+                "beers": beers,
+                "total": round(beers * beer_price, 2),
+                "paid": round(beers_paid * beer_price, 2),
+                "open": round(beers_open * beer_price, 2),
+            })
+
+        return {
+            "monthly_summary": summary,
+            "month_label": today.strftime("%B %Y"),
+            "beer_price": beer_price,
+        }
 
     @app.route("/logout")
     def logout():
