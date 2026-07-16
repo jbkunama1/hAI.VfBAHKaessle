@@ -67,6 +67,17 @@ def create_app(test_config=None):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id)
             );
+
+            CREATE TABLE IF NOT EXISTS payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                beer_id INTEGER NOT NULL UNIQUE,
+                is_paid INTEGER NOT NULL DEFAULT 0,
+                method TEXT CHECK(method IN ('BAR','PAYPAL') OR method IS NULL),
+                marked_by_user_id INTEGER,
+                marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(beer_id) REFERENCES beers(id),
+                FOREIGN KEY(marked_by_user_id) REFERENCES users(id)
+            );
             """
         )
         db.commit()
@@ -221,10 +232,17 @@ def create_app(test_config=None):
 
         entries = db.execute(
             """
-            SELECT drinking_date, amount, created_at
-            FROM beers
-            WHERE user_id = ?
-            ORDER BY drinking_date DESC, created_at DESC
+            SELECT
+                b.id,
+                b.drinking_date,
+                b.amount,
+                b.created_at,
+                COALESCE(p.is_paid, 0) AS is_paid,
+                p.method AS payment_method
+            FROM beers b
+            LEFT JOIN payments p ON p.beer_id = b.id
+            WHERE b.user_id = ?
+            ORDER BY b.drinking_date DESC, b.created_at DESC
             LIMIT 20
             """,
             (user["id"],),
@@ -318,10 +336,17 @@ def create_app(test_config=None):
 
         recent_entries = db.execute(
             """
-            SELECT b.id, b.drinking_date, b.amount, b.created_at,
-                   u.username
+            SELECT
+                b.id,
+                b.drinking_date,
+                b.amount,
+                b.created_at,
+                u.username,
+                COALESCE(p.is_paid, 0) AS is_paid,
+                p.method AS payment_method
             FROM beers b
             JOIN users u ON u.id = b.user_id
+            LEFT JOIN payments p ON p.beer_id = b.id
             ORDER BY b.drinking_date DESC, b.created_at DESC
             LIMIT 50
             """
@@ -490,6 +515,53 @@ def create_app(test_config=None):
             users=users,
             beer_price=beer_price,
         )
+
+    @app.route("/entry/<int:entry_id>/payment", methods=["POST"])
+    @login_required
+    def update_payment(entry_id):
+        db = get_db()
+        user = current_user()
+
+        entry = db.execute(
+            """
+            SELECT b.id, b.user_id
+            FROM beers b
+            WHERE b.id = ?
+            """,
+            (entry_id,),
+        ).fetchone()
+
+        if entry is None:
+            flash("Eintrag nicht gefunden.", "warning")
+            return redirect(url_for("dashboard"))
+
+        if (entry["user_id"] != user["id"]) and (not is_admin_user(user)):
+            flash("Keine Berechtigung für diesen Eintrag.", "danger")
+            return redirect(url_for("dashboard"))
+
+        is_paid = 1 if request.form.get("is_paid") == "on" else 0
+        method = request.form.get("method") or None
+
+        if is_paid and method not in ("BAR", "PAYPAL"):
+            flash("Bitte eine gültige Zahlart wählen.", "danger")
+            return redirect(request.referrer or url_for("dashboard"))
+
+        db.execute(
+            """
+            INSERT INTO payments (beer_id, is_paid, method, marked_by_user_id)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(beer_id) DO UPDATE SET
+                is_paid = excluded.is_paid,
+                method = excluded.method,
+                marked_by_user_id = excluded.marked_by_user_id,
+                marked_at = CURRENT_TIMESTAMP
+            """,
+            (entry_id, is_paid, method, user["id"]),
+        )
+        db.commit()
+
+        flash("Zahlstatus aktualisiert.", "success")
+        return redirect(request.referrer or url_for("dashboard"))
 
     return app
 
