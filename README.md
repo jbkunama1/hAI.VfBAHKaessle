@@ -1,6 +1,8 @@
-
 # hAI.VfBAHKaessle – VfB Grötzingen AH Bierkässle
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/jbkunama1/hAI.VfBAHKaessle/main/VfB_Logo_II.jpg" alt="VfB Grötzingen AH" height="160">
+</p>
 
 <p align="center">
   <a href="https://github.com/jbkunama1/hAI.VfBAHKaessle"><img src="https://img.shields.io/github/stars/jbkunama1/hAI.VfBAHKaessle?style=flat-square" alt="GitHub stars"></a>
@@ -53,6 +55,9 @@ Lizenz: MIT (siehe `LICENSE`).
 - Registrierung und Login für Spieler
 - Biereinträge pro Datum (z. B. immer mittwochs nach dem Training)
 - Preis pro Bier konfigurierbar über `BEER_PRICE` (Standard: 1.50 €)
+- **Pro Eintrag ein Bezahlt-Status mit Zahlart (Bar/PayPal)**
+  - Spieler sehen bei ihren Einträgen sofort, was noch offen und was schon bezahlt ist
+  - Admins können den Status für alle Spieler setzen oder korrigieren
 - Monatsübersicht pro Spieler sowie Gesamtübersicht
 - Mobil-taugliche UI (Bootstrap 5, dunkles Theme)
 - Telegram-Bot zur schnellen Erfassung direkt aus Telegram
@@ -145,7 +150,6 @@ docker compose up -d
 services:
   bierkaessle_web:
     image: haivfbahkaessle:latest
-    # build: .
     container_name: bierkaessle_web
     ports:
       - "1904:1904"
@@ -158,7 +162,6 @@ services:
 
   bierkaessle_bot:
     image: haivfbahkaessle:latest
-    # build: .
     container_name: bierkaessle_bot
     environment:
       - TELEGRAM_BOT_TOKEN=DEIN_TELEGRAM_BOT_TOKEN
@@ -199,7 +202,7 @@ Für Admins (erster registrierter User oder über `ADMIN_USERNAMES` konfiguriert
 - Liste der letzten Einträge aller Spieler (global)
 - Einträge bearbeiten (Datum und Anzahl ändern)
 - Einträge löschen (z. B. bei Fehlbuchungen)
+- Einträge als bezahlt markieren, inkl. Zahlart (Bar/PayPal)
 - CSV-Export aller Einträge eines Monats: `username, date, amount`
 
-Zugriff auf das Admin-Panel erfolgt über den Link **„Admin“** in der Navigation.
-
+Zugriff auf das Admin-Panel erfolgt über den Link **„Admin"** in der Navigation.
