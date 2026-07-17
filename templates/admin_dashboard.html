@@ -1,151 +1,175 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="row g-4">
-  <div class="col-12 col-lg-5">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h1 class="h4 mb-3">Admin-Übersicht</h1>
-        <p class="small mb-2">
-          <a href="{{ url_for('admin_report_balances') }}" class="link-light">
-            Offene Beträge / Monatsreport anzeigen
-          </a>
-        </p>
-        <p class="small text-muted mb-3">
-          Zusammenfassung aller Nutzer und ihrer bisher eingetragenen Biere.
-        </p>
-        <div class="table-responsive small">
-          <table class="table align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Spieler</th>
-                <th class="text-end">Biere</th>
-                <th class="text-end">Summe (€)</th>
-                <th>Letztes Datum</th>
-                <th>Rolle</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for u in users_stats %}
-                <tr>
-                  <td>{{ u.username }}</td>
-                  <td class="text-end">{{ u.beers }}</td>
-                  <td class="text-end">{{ '%.2f'|format((u.beers or 0) * beer_price) }}</td>
-                  <td>{{ u.last_date or '-' }}</td>
-                  <td>
-                    {% if u.is_admin %}
-                      <span class="badge bg-primary">Admin</span>
-                    {% else %}
-                      <span class="badge bg-secondary">User</span>
-                    {% endif %}
-                  </td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+<div class="admin-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <h1 class="admin-title mb-1">Admin-Übersicht</h1>
+    <p class="admin-subtitle mb-0">Nutzer, Einträge und Zahlungen im Blick.</p>
+  </div>
+  <a href="{{ url_for('admin_report_balances') }}" class="btn btn-outline-light btn-sm">
+    📊 Offene Beträge / Monatsreport
+  </a>
+</div>
 
-    <div class="card shadow-sm mt-3">
-      <div class="card-body">
-        <h2 class="h6 mb-3">Export</h2>
-        <form class="row gy-2 gx-2 align-items-end" method="get" action="{{ url_for('admin_export_month') }}">
-          <div class="col-4 col-sm-3">
-            <label class="form-label form-label-sm" for="month">Monat</label>
-            <select id="month" name="month" class="form-select form-select-sm">
-              {% for m in range(1, 13) %}
-                <option value="{{ m }}">{{ '%02d'|format(m) }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-4 col-sm-3">
-            <label class="form-label form-label-sm" for="year">Jahr</label>
-            <input id="year" name="year" type="number" class="form-control form-control-sm"
-                   value="{{ now().year if false else 2026 }}">
-          </div>
-          <div class="col-4 col-sm-4">
-            <button type="submit" class="btn btn-sm btn-primary w-100">CSV exportieren</button>
-          </div>
-        </form>
-        <p class="small text-muted mt-2 mb-0">
-          Exportiert alle Biereinträge des gewählten Monats als CSV (Spieler, Datum, Anzahl).
-        </p>
-      </div>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-label">Nutzer</div>
+      <div class="stat-value">{{ users_stats|length }}</div>
     </div>
   </div>
-
-  <div class="col-12 col-lg-7">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h2 class="h5 mb-3">Letzte Einträge (global)</h2>
-        {% if recent_entries %}
-          <div class="table-responsive small">
-            <table class="table table-sm align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Spieler</th>
-                  <th>Datum</th>
-                  <th class="text-end">Biere</th>
-                  <th>Erfasst am</th>
-                  <th>Bezahlt</th>
-                  <th>Zahlart</th>
-                  <th class="text-end">Aktionen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for e in recent_entries %}
-                  <tr>
-                    <td>{{ e.username }}</td>
-                    <td>{{ e.drinking_date }}</td>
-                    <td class="text-end">{{ e.amount }}</td>
-                    <td>{{ e.created_at }}</td>
-                    <td>
-                      <form method="post"
-                            action="{{ url_for('update_payment', entry_id=e.id) }}"
-                            class="d-flex align-items-center gap-1">
-                        <input type="checkbox"
-                               name="is_paid"
-                               class="form-check-input"
-                               {% if e.is_paid %}checked{% endif %}
-                               onchange="this.form.submit()">
-                        <noscript>
-                          <button type="submit" class="btn btn-sm btn-outline-secondary">
-                            Speichern
-                          </button>
-                        </noscript>
-                    </td>
-                    <td>
-                        <select name="method"
-                                class="form-select form-select-sm"
-                                onchange="this.form.submit()">
-                          <option value="">–</option>
-                          <option value="BAR" {% if e.payment_method == 'BAR' %}selected{% endif %}>Bar</option>
-                          <option value="PAYPAL" {% if e.payment_method == 'PAYPAL' %}selected{% endif %}>PayPal</option>
-                        </select>
-                      </form>
-                    </td>
-                    <td class="text-end">
-                      <div class="btn-group btn-group-sm" role="group">
-                        <a href="{{ url_for('admin_edit_entry', entry_id=e.id) }}"
-                           class="btn btn-outline-secondary">Ändern</a>
-                        <form method="post"
-                              action="{{ url_for('admin_delete_entry', entry_id=e.id) }}"
-                              class="d-inline"
-                              onsubmit="return confirm('Eintrag wirklich löschen?');">
-                          <button type="submit" class="btn btn-outline-danger">Löschen</button>
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        {% else %}
-          <p class="text-muted mb-0">Noch keine Einträge vorhanden.</p>
-        {% endif %}
-      </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-label">Admins</div>
+      <div class="stat-value">{{ users_stats|selectattr('is_admin')|list|length }}</div>
     </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-label">Getränke gesamt</div>
+      <div class="stat-value">{{ users_stats|sum(attribute='beers') }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-label">Letzte Einträge</div>
+      <div class="stat-value">{{ recent_entries|length }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="section-title mb-0">Nutzerverwaltung</h2>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-dark table-hover align-middle admin-table mb-0">
+        <thead>
+          <tr>
+            <th>Spieler</th>
+            <th>Getränke</th>
+            <th>Summe (€)</th>
+            <th>Letztes Datum</th>
+            <th>Rolle</th>
+            <th class="text-end">Aktionen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users_stats %}
+          <tr>
+            <td class="fw-semibold">{{ u.username }}</td>
+            <td>{{ u.beers }}</td>
+            <td>{{ '%.2f'|format((u.beers or 0) * beer_price) }}</td>
+            <td>{{ u.last_date or '–' }}</td>
+            <td>
+              {% if u.is_admin %}
+                <span class="badge badge-admin">Admin</span>
+              {% else %}
+                <span class="badge badge-user">User</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <div class="d-inline-flex gap-2">
+                <a href="{{ url_for('admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-info">Bearbeiten</a>
+                {% if not u.is_admin %}
+                <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" class="d-inline"
+                      onsubmit="return confirm('User \'{{ u.username }}\' wirklich löschen?');">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">Löschen</button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h2 class="section-title mb-3">Export</h2>
+    <form method="get" action="{{ url_for('admin_export_month') }}" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small text-uppercase text-muted mb-1" for="month">Monat</label>
+        <select id="month" name="month" class="form-select form-select-sm">
+          {% for m in range(1, 13) %}
+          <option value="{{ m }}">{{ '%02d'|format(m) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small text-uppercase text-muted mb-1" for="year">Jahr</label>
+        <input id="year" name="year" type="number" class="form-control form-control-sm" value="2026">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm">CSV exportieren</button>
+      </div>
+      <div class="col-12">
+        <p class="text-muted small mb-0 mt-1">Exportiert alle Einträge des gewählten Monats als CSV (Spieler, Datum, Anzahl, Getränk, Preis).</p>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h2 class="section-title mb-3">Letzte Einträge (global)</h2>
+    {% if recent_entries %}
+    <div class="table-responsive">
+      <table class="table table-dark table-hover align-middle admin-table mb-0">
+        <thead>
+          <tr>
+            <th>Spieler</th>
+            <th>Datum</th>
+            <th>Getränk</th>
+            <th>Anzahl</th>
+            <th>Erfasst am</th>
+            <th>Zahlung</th>
+            <th class="text-end">Aktionen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in recent_entries %}
+          <tr>
+            <td class="fw-semibold">{{ e.username }}</td>
+            <td>{{ e.drinking_date }}</td>
+            <td>{{ drink_label.get(e.drink_type, e.drink_type) }}</td>
+            <td>{{ e.amount }}</td>
+            <td>{{ e.created_at }}</td>
+            <td>
+              <form method="post" action="{{ url_for('update_payment', entry_id=e.id) }}" class="d-flex align-items-center gap-2 payment-form">
+                <input type="checkbox" name="is_paid" class="form-check-input" {% if e.is_paid %}checked{% endif %} onchange="this.form.submit()">
+                {% if e.is_paid %}
+                  <span class="badge badge-paid">bezahlt</span>
+                {% else %}
+                  <span class="badge badge-open">offen</span>
+                {% endif %}
+                <select name="method" class="form-select form-select-sm" onchange="this.form.submit()">
+                  <option value="">–</option>
+                  <option value="BAR" {% if e.payment_method == 'BAR' %}selected{% endif %}>Bar</option>
+                  <option value="PAYPAL" {% if e.payment_method == 'PAYPAL' %}selected{% endif %}>PayPal</option>
+                </select>
+              </form>
+            </td>
+            <td class="text-end">
+              <div class="d-inline-flex gap-2">
+                <a href="{{ url_for('admin_edit_entry', entry_id=e.id) }}" class="btn btn-sm btn-outline-info">Ändern</a>
+                <form method="post" action="{{ url_for('admin_delete_entry', entry_id=e.id) }}" class="d-inline"
+                      onsubmit="return confirm('Eintrag wirklich löschen?');">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">Löschen</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">Noch keine Einträge vorhanden.</p>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

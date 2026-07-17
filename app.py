@@ -404,7 +404,7 @@ def create_app(test_config=None):
 
         users_stats = db.execute(
             """
-            SELECT u.id, u.username, u.is_admin,
+            SELECT u.id, u.username, u.telegram_id, u.is_admin,
                    COALESCE(SUM(b.amount), 0) AS beers,
                    MAX(b.drinking_date) AS last_date
             FROM users u
@@ -441,6 +441,111 @@ def create_app(test_config=None):
             beer_price=beer_price,
             drink_label=DRINK_LABEL,
         )
+
+    @app.route("/admin/user/<int:user_id>/edit", methods=["GET", "POST"])
+    @login_required
+    @admin_required
+    def admin_edit_user(user_id):
+        db = get_db()
+        admin_user = current_user()
+        user = db.execute(
+            "SELECT id, username, telegram_id, is_admin, created_at FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+
+        if user is None:
+            flash("User nicht gefunden.", "warning")
+            return redirect(url_for("admin_dashboard"))
+
+        if request.method == "POST":
+            username = request.form.get("username", "").strip()
+            telegram_id_raw = request.form.get("telegram_id", "").strip()
+            new_password = request.form.get("new_password", "")
+            is_admin_checked = 1 if request.form.get("is_admin") == "on" else 0
+
+            if not username:
+                flash("Benutzername darf nicht leer sein.", "danger")
+                return render_template("admin_edit_user.html", edit_user=user)
+
+            telegram_id = None
+            if telegram_id_raw:
+                try:
+                    telegram_id = int(telegram_id_raw)
+                except ValueError:
+                    flash("Telegram-ID muss eine Zahl sein.", "danger")
+                    return render_template("admin_edit_user.html", edit_user=user)
+
+            if user["id"] == admin_user["id"] and is_admin_checked == 0:
+                flash("Du kannst dir die eigenen Admin-Rechte nicht entziehen.", "danger")
+                return render_template("admin_edit_user.html", edit_user=user)
+
+            duplicate = db.execute(
+                "SELECT id FROM users WHERE username = ? AND id != ?",
+                (username, user_id),
+            ).fetchone()
+            if duplicate:
+                flash("Benutzername ist bereits vergeben.", "danger")
+                return render_template("admin_edit_user.html", edit_user=user)
+
+            if telegram_id is not None:
+                duplicate_tg = db.execute(
+                    "SELECT id FROM users WHERE telegram_id = ? AND id != ?",
+                    (telegram_id, user_id),
+                ).fetchone()
+                if duplicate_tg:
+                    flash("Telegram-ID ist bereits einem anderen User zugeordnet.", "danger")
+                    return render_template("admin_edit_user.html", edit_user=user)
+
+            db.execute(
+                "UPDATE users SET username = ?, telegram_id = ?, is_admin = ? WHERE id = ?",
+                (username, telegram_id, is_admin_checked, user_id),
+            )
+
+            if new_password:
+                db.execute(
+                    "UPDATE users SET password_hash = ? WHERE id = ?",
+                    (generate_password_hash(new_password), user_id),
+                )
+
+            db.commit()
+            flash("User aktualisiert.", "success")
+            return redirect(url_for("admin_dashboard"))
+
+        return render_template("admin_edit_user.html", edit_user=user)
+
+    @app.route("/admin/user/<int:user_id>/delete", methods=["POST"])
+    @login_required
+    @admin_required
+    def admin_delete_user(user_id):
+        db = get_db()
+        admin_user = current_user()
+        user = db.execute(
+            "SELECT id, username, is_admin FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+
+        if user is None:
+            flash("User nicht gefunden.", "warning")
+            return redirect(url_for("admin_dashboard"))
+
+        if user["is_admin"]:
+            flash("Admins dürfen nicht gelöscht werden.", "danger")
+            return redirect(url_for("admin_dashboard"))
+
+        if user["id"] == admin_user["id"]:
+            flash("Du kannst dich nicht selbst löschen.", "danger")
+            return redirect(url_for("admin_dashboard"))
+
+        db.execute(
+            "DELETE FROM payments WHERE beer_id IN (SELECT id FROM beers WHERE user_id = ?)",
+            (user_id,),
+        )
+        db.execute("DELETE FROM beers WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        db.commit()
+
+        flash(f"User '{user['username']}' wurde gelöscht.", "info")
+        return redirect(url_for("admin_dashboard"))
 
     @app.route("/admin/entry/<int:entry_id>/edit", methods=["GET", "POST"])
     @login_required
