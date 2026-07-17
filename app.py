@@ -269,6 +269,10 @@ def create_app(test_config=None):
             return redirect(url_for("login"))
         return redirect(url_for("dashboard"))
 
+    @app.route("/about")
+    def about():
+        return render_template("about.html")
+
     @app.route("/dashboard", methods=["GET", "POST"])
     @login_required
     def dashboard():
