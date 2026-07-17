@@ -189,3 +189,153 @@ table thead th {
 .form-switch .form-check-input {
   width: 2.5em;
 }
+
+
+
+/* ─────────── Admin Dashboard Redesign ─────────── */
+.admin-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.admin-subtitle {
+  color: rgba(248, 249, 250, 0.6);
+  font-size: 0.95rem;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.stat-card {
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1rem 1.1rem;
+  height: 100%;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(248, 249, 250, 0.55);
+  margin-bottom: 0.35rem;
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #f8f9fa;
+}
+
+.admin-table thead th {
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(248, 249, 250, 0.6);
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.admin-table tbody tr {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.admin-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.badge-admin {
+  background: linear-gradient(135deg, #fdcb6e, #e17055);
+  color: #111318;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.35em 0.7em;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge-user {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(248, 249, 250, 0.85);
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.35em 0.7em;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge-paid {
+  background: linear-gradient(135deg, #6ab04c, #badc58);
+  color: #111318;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.3em 0.6em;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.badge-open {
+  background: rgba(255, 118, 117, 0.18);
+  color: #ff7675;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.3em 0.6em;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 118, 117, 0.35);
+}
+
+.payment-form {
+  flex-wrap: wrap;
+}
+
+.btn-outline-info {
+  border-radius: 999px;
+  border-color: rgba(0, 206, 201, 0.5);
+  color: #00cec9;
+}
+
+.btn-outline-info:hover {
+  background: rgba(0, 206, 201, 0.15);
+  color: #00cec9;
+  border-color: #00cec9;
+}
+
+.btn-outline-danger {
+  border-radius: 999px;
+}
+
+.btn-outline-light {
+  border-radius: 999px;
+}
+
+.form-switch .form-check-input {
+  width: 2.5em;
+}
+
+
+/* ─────────── Admin-Link in der Navbar ─────────── */
+.nav-link-admin {
+  color: #fdcb6e !important;
+  font-weight: 600;
+}
+
+.nav-link-admin:hover {
+  color: #ffeaa7 !important;
+}
+
+
+/* ─────────── Admin Nav-Link ─────────── */
+.nav-admin-link {
+  color: #fdcb6e !important;
+  font-weight: 600;
+}
+
+.nav-admin-link:hover {
+  color: #ffeaa7 !important;
+}
