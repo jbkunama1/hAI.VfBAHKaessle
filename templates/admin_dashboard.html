@@ -1,37 +1,38 @@
 {% extends 'base.html' %}
+{% set title = t('page.admin.title') %}
 {% block content %}
 <div class="admin-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
   <div>
-    <h1 class="admin-title mb-1">Admin-Übersicht</h1>
-    <p class="admin-subtitle mb-0">Nutzer, Einträge und Zahlungen im Blick.</p>
+    <h1 class="admin-title mb-1">{{ t('admin.heading') }}</h1>
+    <p class="admin-subtitle mb-0">{{ t('admin.subtitle') }}</p>
   </div>
   <a href="{{ url_for('admin_report_balances') }}" class="btn btn-outline-light btn-sm">
-    📊 Offene Beträge / Monatsreport
+    📊 {{ t('admin.balance_report') }}
   </a>
 </div>
 
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
     <div class="stat-card">
-      <div class="stat-label">Nutzer</div>
+      <div class="stat-label">{{ t('admin.stats.users') }}</div>
       <div class="stat-value">{{ users_stats|length }}</div>
     </div>
   </div>
   <div class="col-6 col-md-3">
     <div class="stat-card">
-      <div class="stat-label">Admins</div>
+      <div class="stat-label">{{ t('admin.stats.admins') }}</div>
       <div class="stat-value">{{ users_stats|selectattr('is_admin')|list|length }}</div>
     </div>
   </div>
   <div class="col-6 col-md-3">
     <div class="stat-card">
-      <div class="stat-label">Getränke gesamt</div>
+      <div class="stat-label">{{ t('admin.stats.drinks_total') }}</div>
       <div class="stat-value">{{ users_stats|sum(attribute='beers') }}</div>
     </div>
   </div>
   <div class="col-6 col-md-3">
     <div class="stat-card">
-      <div class="stat-label">Letzte Einträge</div>
+      <div class="stat-label">{{ t('admin.stats.latest_entries') }}</div>
       <div class="stat-value">{{ recent_entries|length }}</div>
     </div>
   </div>
@@ -40,18 +41,18 @@
 <div class="card mb-4">
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2 class="section-title mb-0">Nutzerverwaltung</h2>
+      <h2 class="section-title mb-0">{{ t('admin.user_management') }}</h2>
     </div>
     <div class="table-responsive">
-      <table class="table table-dark table-hover align-middle admin-table mb-0">
+      <table class="table table-hover align-middle admin-table mb-0">
         <thead>
           <tr>
-            <th>Spieler</th>
-            <th>Getränke</th>
-            <th>Summe (€)</th>
-            <th>Letztes Datum</th>
-            <th>Rolle</th>
-            <th class="text-end">Aktionen</th>
+            <th>{{ t('table.player') }}</th>
+            <th>{{ t('table.drinks') }}</th>
+            <th>{{ t('table.total_euro') }}</th>
+            <th>{{ t('table.last_date') }}</th>
+            <th>{{ t('table.role') }}</th>
+            <th class="text-end">{{ t('table.actions') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -63,18 +64,18 @@
             <td>{{ u.last_date or '–' }}</td>
             <td>
               {% if u.is_admin %}
-                <span class="badge badge-admin">Admin</span>
+                <span class="badge badge-admin">{{ t('role.admin') }}</span>
               {% else %}
-                <span class="badge badge-user">User</span>
+                <span class="badge badge-user">{{ t('role.user') }}</span>
               {% endif %}
             </td>
             <td class="text-end">
               <div class="d-inline-flex gap-2">
-                <a href="{{ url_for('admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-info">Bearbeiten</a>
+                <a href="{{ url_for('admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-info">{{ t('action.edit') }}</a>
                 {% if not u.is_admin %}
                 <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" class="d-inline"
-                      onsubmit="return confirm('User \'{{ u.username }}\' wirklich löschen?');">
-                  <button type="submit" class="btn btn-sm btn-outline-danger">Löschen</button>
+                      onsubmit="return confirm({{ t('confirm.delete_user', username=u.username)|tojson }});">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">{{ t('action.delete') }}</button>
                 </form>
                 {% endif %}
               </div>
@@ -89,10 +90,10 @@
 
 <div class="card mb-4">
   <div class="card-body">
-    <h2 class="section-title mb-3">Export</h2>
+    <h2 class="section-title mb-3">{{ t('admin.export') }}</h2>
     <form method="get" action="{{ url_for('admin_export_month') }}" class="row g-2 align-items-end">
       <div class="col-auto">
-        <label class="form-label small text-uppercase text-muted mb-1" for="month">Monat</label>
+        <label class="form-label small text-uppercase text-muted mb-1" for="month">{{ t('form.month') }}</label>
         <select id="month" name="month" class="form-select form-select-sm">
           {% for m in range(1, 13) %}
           <option value="{{ m }}">{{ '%02d'|format(m) }}</option>
@@ -100,14 +101,14 @@
         </select>
       </div>
       <div class="col-auto">
-        <label class="form-label small text-uppercase text-muted mb-1" for="year">Jahr</label>
+        <label class="form-label small text-uppercase text-muted mb-1" for="year">{{ t('form.year') }}</label>
         <input id="year" name="year" type="number" class="form-control form-control-sm" value="2026">
       </div>
       <div class="col-auto">
-        <button type="submit" class="btn btn-primary btn-sm">CSV exportieren</button>
+        <button type="submit" class="btn btn-primary btn-sm">{{ t('admin.export_csv') }}</button>
       </div>
       <div class="col-12">
-        <p class="text-muted small mb-0 mt-1">Exportiert alle Einträge des gewählten Monats als CSV (Spieler, Datum, Anzahl, Getränk, Preis).</p>
+        <p class="text-muted small mb-0 mt-1">{{ t('admin.export_help') }}</p>
       </div>
     </form>
   </div>
@@ -115,19 +116,19 @@
 
 <div class="card">
   <div class="card-body">
-    <h2 class="section-title mb-3">Letzte Einträge (global)</h2>
+    <h2 class="section-title mb-3">{{ t('admin.latest_entries_global') }}</h2>
     {% if recent_entries %}
     <div class="table-responsive">
-      <table class="table table-dark table-hover align-middle admin-table mb-0">
+      <table class="table table-hover align-middle admin-table mb-0">
         <thead>
           <tr>
-            <th>Spieler</th>
-            <th>Datum</th>
-            <th>Getränk</th>
-            <th>Anzahl</th>
-            <th>Erfasst am</th>
-            <th>Zahlung</th>
-            <th class="text-end">Aktionen</th>
+            <th>{{ t('table.player') }}</th>
+            <th>{{ t('table.date') }}</th>
+            <th>{{ t('table.drink') }}</th>
+            <th>{{ t('table.amount') }}</th>
+            <th>{{ t('table.recorded_at') }}</th>
+            <th>{{ t('table.payment') }}</th>
+            <th class="text-end">{{ t('table.actions') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -142,23 +143,23 @@
               <form method="post" action="{{ url_for('update_payment', entry_id=e.id) }}" class="d-flex align-items-center gap-2 payment-form">
                 <input type="checkbox" name="is_paid" class="form-check-input" {% if e.is_paid %}checked{% endif %} onchange="this.form.submit()">
                 {% if e.is_paid %}
-                  <span class="badge badge-paid">bezahlt</span>
+                  <span class="badge badge-paid">{{ t('payment.paid') }}</span>
                 {% else %}
-                  <span class="badge badge-open">offen</span>
+                  <span class="badge badge-open">{{ t('payment.open') }}</span>
                 {% endif %}
                 <select name="method" class="form-select form-select-sm" onchange="this.form.submit()">
                   <option value="">–</option>
-                  <option value="BAR" {% if e.payment_method == 'BAR' %}selected{% endif %}>Bar</option>
+                  <option value="BAR" {% if e.payment_method == 'BAR' %}selected{% endif %}>{{ t('payment.bar') }}</option>
                   <option value="PAYPAL" {% if e.payment_method == 'PAYPAL' %}selected{% endif %}>PayPal</option>
                 </select>
               </form>
             </td>
             <td class="text-end">
               <div class="d-inline-flex gap-2">
-                <a href="{{ url_for('admin_edit_entry', entry_id=e.id) }}" class="btn btn-sm btn-outline-info">Ändern</a>
+                <a href="{{ url_for('admin_edit_entry', entry_id=e.id) }}" class="btn btn-sm btn-outline-info">{{ t('action.change') }}</a>
                 <form method="post" action="{{ url_for('admin_delete_entry', entry_id=e.id) }}" class="d-inline"
-                      onsubmit="return confirm('Eintrag wirklich löschen?');">
-                  <button type="submit" class="btn btn-sm btn-outline-danger">Löschen</button>
+                      onsubmit="return confirm({{ t('confirm.delete_entry')|tojson }});">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">{{ t('action.delete') }}</button>
                 </form>
               </div>
             </td>
@@ -168,7 +169,7 @@
       </table>
     </div>
     {% else %}
-    <p class="text-muted mb-0">Noch keine Einträge vorhanden.</p>
+    <p class="text-muted mb-0">{{ t('table.no_entries') }}</p>
     {% endif %}
   </div>
 </div>
