@@ -125,3 +125,25 @@
 .form-switch .form-check-input {
   width: 2.5em;
 }
+
+
+/* ─────────── Admin-Link in der Navbar ─────────── */
+.nav-link-admin {
+  color: #fdcb6e !important;
+  font-weight: 600;
+}
+
+.nav-link-admin:hover {
+  color: #ffeaa7 !important;
+}
+
+
+/* ─────────── Admin Nav-Link ─────────── */
+.nav-admin-link {
+  color: #fdcb6e !important;
+  font-weight: 600;
+}
+
+.nav-admin-link:hover {
+  color: #ffeaa7 !important;
+}
