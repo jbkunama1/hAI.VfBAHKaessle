@@ -45,7 +45,7 @@
           {% endif %}
           <li class="nav-item">
             <form method="post" action="{{ url_for('set_language') }}" class="d-flex align-items-center nav-control-form">
-              <input type="hidden" name="next" value="{{ request.full_path if request.full_path else request.path }}">
+              <input type="hidden" name="next_endpoint" value="{{ request.endpoint or 'index' }}">
               <input type="hidden" name="lang" value="{{ 'en' if current_lang == 'de' else 'de' }}">
               <button type="submit" class="btn btn-sm btn-outline-light nav-switch-btn" title="{{ t('switch.language') }}">
                 {{ 'EN' if current_lang == 'de' else 'DE' }}
@@ -54,7 +54,7 @@
           </li>
           <li class="nav-item">
             <form method="post" action="{{ url_for('set_theme') }}" class="d-flex align-items-center nav-control-form" onsubmit="localStorage.setItem('vfb-theme', '{{ 'light' if current_theme == 'dark' else 'dark' }}')">
-              <input type="hidden" name="next" value="{{ request.full_path if request.full_path else request.path }}">
+              <input type="hidden" name="next_endpoint" value="{{ request.endpoint or 'index' }}">
               <input type="hidden" name="theme" value="{{ 'light' if current_theme == 'dark' else 'dark' }}">
               <button type="submit" class="btn btn-sm btn-outline-light nav-switch-btn" title="{{ t('switch.theme') }}">
                 {{ '☀️' if current_theme == 'dark' else '🌙' }}
@@ -71,11 +71,7 @@
       {% if messages %}
         {% for category, message in messages %}
         <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-          {% if message is mapping and message.key is defined %}
-            {{ t(message.key, **(message.kwargs or {})) }}
-          {% else %}
-            {{ message }}
-          {% endif %}
+          {{ tf(message) }}
           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         {% endfor %}

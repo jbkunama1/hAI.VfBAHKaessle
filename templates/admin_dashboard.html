@@ -74,7 +74,7 @@
                 <a href="{{ url_for('admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-info">{{ t('action.edit') }}</a>
                 {% if not u.is_admin %}
                 <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" class="d-inline"
-                      onsubmit="return confirm('{{ t('confirm.delete_user', username=u.username) }}');">
+                      onsubmit="return confirm({{ t('confirm.delete_user', username=u.username)|tojson }});">
                   <button type="submit" class="btn btn-sm btn-outline-danger">{{ t('action.delete') }}</button>
                 </form>
                 {% endif %}
@@ -158,7 +158,7 @@
               <div class="d-inline-flex gap-2">
                 <a href="{{ url_for('admin_edit_entry', entry_id=e.id) }}" class="btn btn-sm btn-outline-info">{{ t('action.change') }}</a>
                 <form method="post" action="{{ url_for('admin_delete_entry', entry_id=e.id) }}" class="d-inline"
-                      onsubmit="return confirm('{{ t('confirm.delete_entry') }}');">
+                      onsubmit="return confirm({{ t('confirm.delete_entry')|tojson }});">
                   <button type="submit" class="btn btn-sm btn-outline-danger">{{ t('action.delete') }}</button>
                 </form>
               </div>

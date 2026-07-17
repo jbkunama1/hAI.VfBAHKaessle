@@ -2,7 +2,6 @@ import csv
 import os
 import sqlite3
 from datetime import date
-from urllib.parse import urlparse
 
 from flask import (
     Flask,
@@ -32,6 +31,16 @@ DEFAULT_LANGUAGE = "de"
 
 SUPPORTED_THEMES = {"dark", "light"}
 DEFAULT_THEME = "dark"
+ALLOWED_REDIRECT_ENDPOINTS = {
+    "index",
+    "login",
+    "register",
+    "about",
+    "dashboard",
+    "summary",
+    "admin_dashboard",
+    "admin_report_balances",
+}
 
 TRANSLATIONS = {
     "app.title": {
@@ -316,13 +325,16 @@ def create_app(test_config=None):
     def flash_i18n(key, category="info", **kwargs):
         flash({"key": key, "kwargs": kwargs}, category)
 
-    def resolve_next_url(candidate):
-        if not candidate:
+    def resolve_next_endpoint(candidate):
+        if candidate not in ALLOWED_REDIRECT_ENDPOINTS:
             return url_for("index")
-        parsed = urlparse(candidate)
-        if parsed.scheme or parsed.netloc:
-            return url_for("index")
-        return candidate
+        return url_for(candidate)
+
+    def translate_flash_message(message):
+        if isinstance(message, dict) and message.get("key"):
+            kwargs = message.get("kwargs") if isinstance(message.get("kwargs"), dict) else {}
+            return translate(message["key"], **kwargs)
+        return str(message)
 
     @app.context_processor
     def inject_roles():
@@ -333,6 +345,7 @@ def create_app(test_config=None):
             "drink_catalog": DRINK_CATALOG,
             "drink_label": DRINK_LABEL,
             "t": translate,
+            "tf": translate_flash_message,
             "current_lang": get_language(),
             "current_theme": get_theme(),
             "session_theme_defined": "theme" in session,
@@ -486,8 +499,8 @@ def create_app(test_config=None):
         if lang not in SUPPORTED_LANGUAGES:
             lang = DEFAULT_LANGUAGE
         session["lang"] = lang
-        next_url = request.form.get("next") or request.referrer
-        return redirect(resolve_next_url(next_url))
+        next_endpoint = request.form.get("next_endpoint", "index")
+        return redirect(resolve_next_endpoint(next_endpoint))
 
     @app.route("/set-theme", methods=["POST"])
     def set_theme():
@@ -495,8 +508,8 @@ def create_app(test_config=None):
         if theme not in SUPPORTED_THEMES:
             theme = DEFAULT_THEME
         session["theme"] = theme
-        next_url = request.form.get("next") or request.referrer
-        return redirect(resolve_next_url(next_url))
+        next_endpoint = request.form.get("next_endpoint", "index")
+        return redirect(resolve_next_endpoint(next_endpoint))
 
     @app.route("/dashboard", methods=["GET", "POST"])
     @login_required
