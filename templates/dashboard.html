@@ -1,21 +1,22 @@
 {% extends 'base.html' %}
+{% set title = t('page.dashboard.title') %}
 {% block content %}
 <div class="row g-4">
   <div class="col-12 col-lg-5">
     <div class="card shadow-sm">
       <div class="card-body">
-        <h1 class="h4 mb-3">Biere eintragen</h1>
-        <p class="small text-muted mb-3">Mittwochs nach dem Training hier die Anzahl der getrunkenen Biere eintragen. Ein Bier = {{ '%.2f'|format(beer_price) }} €.</p>
+        <h1 class="h4 mb-3">{{ t('dashboard.heading') }}</h1>
+        <p class="small text-muted mb-3">{{ t('dashboard.info', price='%.2f'|format(beer_price)) }}</p>
         <form method="post" novalidate>
           <div class="mb-3">
-            <label for="drinking_date" class="form-label">Datum</label>
+            <label for="drinking_date" class="form-label">{{ t('form.date') }}</label>
             <input type="date" class="form-control" id="drinking_date" name="drinking_date" value="{{ today.isoformat() }}" required>
           </div>
           <div class="mb-3">
-            <label for="amount" class="form-label">Anzahl Biere</label>
+            <label for="amount" class="form-label">{{ t('form.beer_count') }}</label>
             <input type="number" class="form-control" id="amount" name="amount" min="1" step="1" required>
           </div>
-          <button type="submit" class="btn btn-success w-100">Eintrag speichern</button>
+          <button type="submit" class="btn btn-success w-100">{{ t('dashboard.save_entry') }}</button>
         </form>
       </div>
     </div>
@@ -24,17 +25,17 @@
   <div class="col-12 col-lg-7">
     <div class="card shadow-sm h-100">
       <div class="card-body d-flex flex-column">
-        <h2 class="h5 mb-3">Letzte Einträge von {{ user.username }}</h2>
+        <h2 class="h5 mb-3">{{ t('dashboard.recent_entries', username=user.username) }}</h2>
         {% if entries %}
           <div class="table-responsive small flex-grow-1">
             <table class="table table-sm align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Datum</th>
-                  <th class="text-end">Biere</th>
-                  <th>Erfasst am</th>
-                  <th>Bezahlt</th>
-                  <th>Zahlart</th>
+                  <th>{{ t('table.date') }}</th>
+                  <th class="text-end">{{ t('table.beers') }}</th>
+                  <th>{{ t('table.recorded_at') }}</th>
+                  <th>{{ t('table.paid') }}</th>
+                  <th>{{ t('table.payment_method') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -51,13 +52,13 @@
                                {% if e.is_paid %}checked{% endif %}
                                onchange="this.form.submit()">
                         <noscript>
-                          <button type="submit" class="btn btn-sm btn-outline-secondary">Speichern</button>
+                          <button type="submit" class="btn btn-sm btn-outline-secondary">{{ t('action.save') }}</button>
                         </noscript>
                     </td>
                     <td>
                         <select name="method" class="form-select form-select-sm" onchange="this.form.submit()">
                           <option value="">–</option>
-                          <option value="BAR" {% if e.payment_method == 'BAR' %}selected{% endif %}>Bar</option>
+                          <option value="BAR" {% if e.payment_method == 'BAR' %}selected{% endif %}>{{ t('payment.bar') }}</option>
                           <option value="PAYPAL" {% if e.payment_method == 'PAYPAL' %}selected{% endif %}>PayPal</option>
                         </select>
                       </form>
@@ -68,7 +69,7 @@
             </table>
           </div>
         {% else %}
-          <p class="text-muted mb-0">Noch keine Einträge vorhanden.</p>
+          <p class="text-muted mb-0">{{ t('table.no_entries') }}</p>
         {% endif %}
       </div>
     </div>

@@ -2,6 +2,7 @@ import csv
 import os
 import sqlite3
 from datetime import date
+from urllib.parse import urlparse
 
 from flask import (
     Flask,
@@ -25,6 +26,172 @@ DRINK_CATALOG = [
 ]
 DRINK_PRICE = {d["key"]: d["price"] for d in DRINK_CATALOG}
 DRINK_LABEL = {d["key"]: d["label"] for d in DRINK_CATALOG}
+
+SUPPORTED_LANGUAGES = {"de", "en"}
+DEFAULT_LANGUAGE = "de"
+
+SUPPORTED_THEMES = {"dark", "light"}
+DEFAULT_THEME = "dark"
+
+TRANSLATIONS = {
+    "app.title": {
+        "de": "VfB Grötzingen - AH Bierkässle",
+        "en": "VfB Grötzingen - AH Beer Cash Box",
+    },
+    "nav.about": {"de": "Über uns", "en": "About"},
+    "nav.dashboard": {"de": "Eintragen", "en": "Add entries"},
+    "nav.summary": {"de": "Monatsübersicht", "en": "Monthly summary"},
+    "nav.admin": {"de": "🛠️ Admin", "en": "🛠️ Admin"},
+    "nav.logout": {"de": "Logout", "en": "Logout"},
+    "nav.login": {"de": "Login", "en": "Login"},
+    "nav.register": {"de": "Registrieren", "en": "Register"},
+    "switch.language": {"de": "Sprache", "en": "Language"},
+    "switch.theme": {"de": "Theme", "en": "Theme"},
+    "theme.dark": {"de": "Dunkel", "en": "Dark"},
+    "theme.light": {"de": "Hell", "en": "Light"},
+    "flash.login_required": {"de": "Bitte zuerst einloggen.", "en": "Please log in first."},
+    "flash.admin_required": {"de": "Admin-Rechte erforderlich.", "en": "Admin rights required."},
+    "flash.empty_username_password": {
+        "de": "Benutzername und Passwort dürfen nicht leer sein.",
+        "en": "Username and password must not be empty.",
+    },
+    "flash.username_taken": {"de": "Benutzername ist bereits vergeben.", "en": "Username is already taken."},
+    "flash.register_success": {"de": "Registrierung erfolgreich. Bitte einloggen.", "en": "Registration successful. Please log in."},
+    "flash.login_failed": {"de": "Benutzername oder Passwort falsch.", "en": "Wrong username or password."},
+    "flash.welcome": {"de": "Willkommen, {username}!", "en": "Welcome, {username}!"},
+    "flash.logout_success": {"de": "Erfolgreich ausgeloggt.", "en": "Successfully logged out."},
+    "flash.invalid_amount": {"de": "Bitte eine gültige Anzahl eintragen.", "en": "Please enter a valid amount."},
+    "flash.entry_saved": {"de": "Eintrag gespeichert.", "en": "Entry saved."},
+    "flash.user_not_found": {"de": "User nicht gefunden.", "en": "User not found."},
+    "flash.username_empty": {"de": "Benutzername darf nicht leer sein.", "en": "Username must not be empty."},
+    "flash.telegram_id_number": {"de": "Telegram-ID muss eine Zahl sein.", "en": "Telegram ID must be a number."},
+    "flash.self_remove_admin": {
+        "de": "Du kannst dir die eigenen Admin-Rechte nicht entziehen.",
+        "en": "You cannot remove your own admin rights.",
+    },
+    "flash.telegram_id_taken": {
+        "de": "Telegram-ID ist bereits einem anderen User zugeordnet.",
+        "en": "Telegram ID is already assigned to another user.",
+    },
+    "flash.user_updated": {"de": "User aktualisiert.", "en": "User updated."},
+    "flash.delete_admin_forbidden": {"de": "Admins dürfen nicht gelöscht werden.", "en": "Admins cannot be deleted."},
+    "flash.delete_self_forbidden": {"de": "Du kannst dich nicht selbst löschen.", "en": "You cannot delete yourself."},
+    "flash.user_deleted": {"de": "User '{username}' wurde gelöscht.", "en": "User '{username}' was deleted."},
+    "flash.entry_not_found": {"de": "Eintrag nicht gefunden.", "en": "Entry not found."},
+    "flash.entry_updated": {"de": "Eintrag aktualisiert.", "en": "Entry updated."},
+    "flash.entry_deleted": {"de": "Eintrag gelöscht.", "en": "Entry deleted."},
+    "flash.entry_permission_denied": {"de": "Keine Berechtigung für diesen Eintrag.", "en": "No permission for this entry."},
+    "flash.payment_method_required": {"de": "Bitte eine gültige Zahlart wählen.", "en": "Please choose a valid payment method."},
+    "flash.payment_updated": {"de": "Zahlstatus aktualisiert.", "en": "Payment status updated."},
+    "page.login.title": {"de": "Login", "en": "Login"},
+    "page.register.title": {"de": "Registrieren", "en": "Register"},
+    "page.about.title": {"de": "Über uns", "en": "About us"},
+    "page.dashboard.title": {"de": "Eintragen", "en": "Add entries"},
+    "page.summary.title": {"de": "Monatsübersicht", "en": "Monthly summary"},
+    "page.admin.title": {"de": "Admin-Übersicht", "en": "Admin overview"},
+    "page.admin_edit_user.title": {"de": "User bearbeiten", "en": "Edit user"},
+    "page.admin_edit_entry.title": {"de": "Eintrag bearbeiten", "en": "Edit entry"},
+    "page.admin_balances.title": {"de": "Offene Beträge", "en": "Open balances"},
+    "about.heading": {"de": "Über uns", "en": "About us"},
+    "about.text": {
+        "de": "Wir sind einige der wenigen Entwickler, die ihr Bier OHNE KI trinken. DSGVO-konform, Hosting und Bier trinken in Deutschland. Kontakt: vfbah@arbeitermili.eu",
+        "en": "We are among the few developers who drink their beer WITHOUT AI. GDPR-compliant, hosting and beer drinking in Germany. Contact: vfbah@arbeitermili.eu",
+    },
+    "login.heading": {"de": "Login", "en": "Login"},
+    "login.submit": {"de": "Einloggen", "en": "Sign in"},
+    "login.no_account": {"de": "Noch kein Konto?", "en": "No account yet?"},
+    "login.register_link": {"de": "Jetzt registrieren", "en": "Register now"},
+    "login.monthly_status": {"de": "Monatsstand {month} (nur lesen)", "en": "Monthly status {month} (read-only)"},
+    "register.heading": {"de": "Registrieren", "en": "Register"},
+    "register.submit": {"de": "Konto anlegen", "en": "Create account"},
+    "register.has_account": {"de": "Schon ein Konto?", "en": "Already have an account?"},
+    "register.login_link": {"de": "Zum Login", "en": "Go to login"},
+    "dashboard.heading": {"de": "Biere eintragen", "en": "Add drinks"},
+    "dashboard.info": {
+        "de": "Mittwochs nach dem Training hier die Anzahl der getrunkenen Biere eintragen. Ein Bier = {price} €.",
+        "en": "After training on Wednesdays, enter the number of drinks here. One drink = {price} €.",
+    },
+    "dashboard.save_entry": {"de": "Eintrag speichern", "en": "Save entry"},
+    "dashboard.recent_entries": {"de": "Letzte Einträge von {username}", "en": "Latest entries from {username}"},
+    "summary.heading": {"de": "Monatsübersicht", "en": "Monthly summary"},
+    "summary.info": {
+        "de": "Auswertung für {month}.{year} – ein Bier = {price} €.",
+        "en": "Overview for {month}.{year} – one drink = {price} €.",
+    },
+    "summary.no_entries": {"de": "Für diesen Monat liegen noch keine Einträge vor.", "en": "No entries exist for this month yet."},
+    "admin.heading": {"de": "Admin-Übersicht", "en": "Admin overview"},
+    "admin.subtitle": {"de": "Nutzer, Einträge und Zahlungen im Blick.", "en": "Keep users, entries, and payments in view."},
+    "admin.balance_report": {"de": "Offene Beträge / Monatsreport", "en": "Open balances / monthly report"},
+    "admin.stats.users": {"de": "Nutzer", "en": "Users"},
+    "admin.stats.admins": {"de": "Admins", "en": "Admins"},
+    "admin.stats.drinks_total": {"de": "Getränke gesamt", "en": "Total drinks"},
+    "admin.stats.latest_entries": {"de": "Letzte Einträge", "en": "Latest entries"},
+    "admin.user_management": {"de": "Nutzerverwaltung", "en": "User management"},
+    "admin.export": {"de": "Export", "en": "Export"},
+    "admin.export_csv": {"de": "CSV exportieren", "en": "Export CSV"},
+    "admin.export_help": {
+        "de": "Exportiert alle Einträge des gewählten Monats als CSV (Spieler, Datum, Anzahl, Getränk, Preis).",
+        "en": "Exports all entries of the selected month as CSV (player, date, amount, drink, price).",
+    },
+    "admin.latest_entries_global": {"de": "Letzte Einträge (global)", "en": "Latest entries (global)"},
+    "admin_edit_user.heading": {"de": "User bearbeiten", "en": "Edit user"},
+    "admin.back_overview": {"de": "← Zurück zur Übersicht", "en": "← Back to overview"},
+    "admin_edit_user.password_hint": {"de": "Leer lassen, um Passwort nicht zu ändern", "en": "Leave blank to keep password unchanged"},
+    "admin_edit_entry.heading": {"de": "Eintrag bearbeiten", "en": "Edit entry"},
+    "balances.heading": {"de": "Offene Beträge pro Spieler", "en": "Open balances per player"},
+    "balances.subtitle": {
+        "de": "Übersicht aller Monate mit den jeweiligen Biermengen und Euro-Beträgen pro Spieler (theoretische Kassensumme).",
+        "en": "Overview of all months with drink quantities and euro totals per player (theoretical cash total).",
+    },
+    "balances.price_hint": {"de": "Ein Bier = {price} €", "en": "One drink = {price} €"},
+    "balances.month_header": {
+        "de": "Monat {ym} — Gesamt: {total_beers} Bier(e) / {total_euros} €",
+        "en": "Month {ym} — Total: {total_beers} drink(s) / {total_euros} €",
+    },
+    "form.username": {"de": "Benutzername", "en": "Username"},
+    "form.password": {"de": "Passwort", "en": "Password"},
+    "form.date": {"de": "Datum", "en": "Date"},
+    "form.beer_count": {"de": "Anzahl Biere", "en": "Number of drinks"},
+    "form.month": {"de": "Monat", "en": "Month"},
+    "form.year": {"de": "Jahr", "en": "Year"},
+    "form.telegram_id": {"de": "Telegram-ID", "en": "Telegram ID"},
+    "form.optional": {"de": "optional", "en": "optional"},
+    "form.new_password": {"de": "Neues Passwort", "en": "New password"},
+    "form.admin_rights": {"de": "Admin-Rechte", "en": "Admin rights"},
+    "action.save": {"de": "Speichern", "en": "Save"},
+    "action.cancel": {"de": "Abbrechen", "en": "Cancel"},
+    "action.update": {"de": "Aktualisieren", "en": "Update"},
+    "action.edit": {"de": "Bearbeiten", "en": "Edit"},
+    "action.delete": {"de": "Löschen", "en": "Delete"},
+    "action.change": {"de": "Ändern", "en": "Change"},
+    "table.player": {"de": "Spieler", "en": "Player"},
+    "table.beers": {"de": "Biere", "en": "Drinks"},
+    "table.total": {"de": "Gesamt", "en": "Total"},
+    "table.total_row": {"de": "Gesamt", "en": "Total"},
+    "table.open": {"de": "Offen", "en": "Open"},
+    "table.paid": {"de": "Bezahlt", "en": "Paid"},
+    "table.date": {"de": "Datum", "en": "Date"},
+    "table.recorded_at": {"de": "Erfasst am", "en": "Recorded at"},
+    "table.payment_method": {"de": "Zahlart", "en": "Payment method"},
+    "table.no_entries": {"de": "Noch keine Einträge vorhanden.", "en": "No entries yet."},
+    "table.no_entries_yet": {"de": "Es sind noch keine Einträge vorhanden.", "en": "No entries are available yet."},
+    "table.drinks": {"de": "Getränke", "en": "Drinks"},
+    "table.total_euro": {"de": "Summe (€)", "en": "Total (€)"},
+    "table.last_date": {"de": "Letztes Datum", "en": "Last date"},
+    "table.role": {"de": "Rolle", "en": "Role"},
+    "table.actions": {"de": "Aktionen", "en": "Actions"},
+    "table.drink": {"de": "Getränk", "en": "Drink"},
+    "table.amount": {"de": "Anzahl", "en": "Amount"},
+    "table.payment": {"de": "Zahlung", "en": "Payment"},
+    "table.amount_euro": {"de": "Betrag (€)", "en": "Amount (€)"},
+    "role.admin": {"de": "Admin", "en": "Admin"},
+    "role.user": {"de": "User", "en": "User"},
+    "payment.paid": {"de": "bezahlt", "en": "paid"},
+    "payment.open": {"de": "offen", "en": "open"},
+    "payment.bar": {"de": "Bar", "en": "Cash"},
+    "confirm.delete_user": {"de": "User '{username}' wirklich löschen?", "en": "Really delete user '{username}'?"},
+    "confirm.delete_entry": {"de": "Eintrag wirklich löschen?", "en": "Really delete entry?"},
+}
 
 
 def create_app(test_config=None):
@@ -123,6 +290,40 @@ def create_app(test_config=None):
         admin_names = [n.strip() for n in admin_names if n.strip()]
         return user["username"] in admin_names
 
+    def get_language():
+        lang = session.get("lang", DEFAULT_LANGUAGE)
+        if lang not in SUPPORTED_LANGUAGES:
+            lang = DEFAULT_LANGUAGE
+            session["lang"] = lang
+        return lang
+
+    def get_theme():
+        theme = session.get("theme", DEFAULT_THEME)
+        if theme not in SUPPORTED_THEMES:
+            theme = DEFAULT_THEME
+            session["theme"] = theme
+        return theme
+
+    def translate(key, **kwargs):
+        lang = get_language()
+        text_map = TRANSLATIONS.get(key, {})
+        text = text_map.get(lang) or text_map.get(DEFAULT_LANGUAGE) or key
+        try:
+            return text.format(**kwargs)
+        except (KeyError, ValueError):
+            return text
+
+    def flash_i18n(key, category="info", **kwargs):
+        flash({"key": key, "kwargs": kwargs}, category)
+
+    def resolve_next_url(candidate):
+        if not candidate:
+            return url_for("index")
+        parsed = urlparse(candidate)
+        if parsed.scheme or parsed.netloc:
+            return url_for("index")
+        return candidate
+
     @app.context_processor
     def inject_roles():
         user = current_user()
@@ -131,6 +332,12 @@ def create_app(test_config=None):
             "is_admin": is_admin_user(user),
             "drink_catalog": DRINK_CATALOG,
             "drink_label": DRINK_LABEL,
+            "t": translate,
+            "current_lang": get_language(),
+            "current_theme": get_theme(),
+            "session_theme_defined": "theme" in session,
+            "supported_languages": sorted(SUPPORTED_LANGUAGES),
+            "supported_themes": sorted(SUPPORTED_THEMES),
         }
 
     def login_required(view):
@@ -139,7 +346,7 @@ def create_app(test_config=None):
         @wraps(view)
         def wrapped(*args, **kwargs):
             if current_user() is None:
-                flash("Bitte zuerst einloggen.", "warning")
+                flash_i18n("flash.login_required", "warning")
                 return redirect(url_for("login"))
             return view(*args, **kwargs)
 
@@ -152,7 +359,7 @@ def create_app(test_config=None):
         def wrapped(*args, **kwargs):
             user = current_user()
             if not is_admin_user(user):
-                flash("Admin-Rechte erforderlich.", "danger")
+                flash_i18n("flash.admin_required", "danger")
                 return redirect(url_for("dashboard"))
             return view(*args, **kwargs)
 
@@ -166,7 +373,7 @@ def create_app(test_config=None):
             password = request.form.get("password", "")
 
             if not username or not password:
-                flash("Benutzername und Passwort duerfen nicht leer sein.", "danger")
+                flash_i18n("flash.empty_username_password", "danger")
                 return render_template("register.html")
 
             db = get_db()
@@ -183,10 +390,10 @@ def create_app(test_config=None):
                 )
                 db.commit()
             except sqlite3.IntegrityError:
-                flash("Benutzername ist bereits vergeben.", "danger")
+                flash_i18n("flash.username_taken", "danger")
                 return render_template("register.html")
 
-            flash("Registrierung erfolgreich. Bitte einloggen.", "success")
+            flash_i18n("flash.register_success", "success")
             return redirect(url_for("login"))
 
         return render_template("register.html")
@@ -203,13 +410,13 @@ def create_app(test_config=None):
             ).fetchone()
 
             if user is None or not check_password_hash(user["password_hash"], password):
-                flash("Benutzername oder Passwort falsch.", "danger")
+                flash_i18n("flash.login_failed", "danger")
                 return render_template("login.html", **_login_context())
 
             session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
-            flash(f"Willkommen, {user['username']}!", "success")
+            flash_i18n("flash.welcome", "success", username=user["username"])
             return redirect(url_for("dashboard"))
 
         return render_template("login.html", **_login_context())
@@ -259,7 +466,7 @@ def create_app(test_config=None):
     @app.route("/logout")
     def logout():
         session.clear()
-        flash("Erfolgreich ausgeloggt.", "info")
+        flash_i18n("flash.logout_success", "info")
         return redirect(url_for("login"))
 
     # ---------------------- Kernfunktionen ----------------------
@@ -272,6 +479,24 @@ def create_app(test_config=None):
     @app.route("/about")
     def about():
         return render_template("about.html")
+
+    @app.route("/set-language", methods=["POST"])
+    def set_language():
+        lang = request.form.get("lang", DEFAULT_LANGUAGE)
+        if lang not in SUPPORTED_LANGUAGES:
+            lang = DEFAULT_LANGUAGE
+        session["lang"] = lang
+        next_url = request.form.get("next") or request.referrer
+        return redirect(resolve_next_url(next_url))
+
+    @app.route("/set-theme", methods=["POST"])
+    def set_theme():
+        theme = request.form.get("theme", DEFAULT_THEME)
+        if theme not in SUPPORTED_THEMES:
+            theme = DEFAULT_THEME
+        session["theme"] = theme
+        next_url = request.form.get("next") or request.referrer
+        return redirect(resolve_next_url(next_url))
 
     @app.route("/dashboard", methods=["GET", "POST"])
     @login_required
@@ -294,14 +519,14 @@ def create_app(test_config=None):
                 amount = 0
 
             if amount <= 0:
-                flash("Bitte eine gueltige Anzahl eintragen.", "danger")
+                flash_i18n("flash.invalid_amount", "danger")
             else:
                 db.execute(
                     "INSERT INTO beers (user_id, drinking_date, amount, drink_type, price_per_unit) VALUES (?, ?, ?, ?, ?)",
                     (user["id"], date_raw, amount, drink_type, price),
                 )
                 db.commit()
-                flash("Eintrag gespeichert.", "success")
+                flash_i18n("flash.entry_saved", "success")
 
             return redirect(url_for("dashboard"))
 
@@ -454,7 +679,7 @@ def create_app(test_config=None):
         ).fetchone()
 
         if user is None:
-            flash("User nicht gefunden.", "warning")
+            flash_i18n("flash.user_not_found", "warning")
             return redirect(url_for("admin_dashboard"))
 
         if request.method == "POST":
@@ -464,7 +689,7 @@ def create_app(test_config=None):
             is_admin_checked = 1 if request.form.get("is_admin") == "on" else 0
 
             if not username:
-                flash("Benutzername darf nicht leer sein.", "danger")
+                flash_i18n("flash.username_empty", "danger")
                 return render_template("admin_edit_user.html", edit_user=user)
 
             telegram_id = None
@@ -472,11 +697,11 @@ def create_app(test_config=None):
                 try:
                     telegram_id = int(telegram_id_raw)
                 except ValueError:
-                    flash("Telegram-ID muss eine Zahl sein.", "danger")
+                    flash_i18n("flash.telegram_id_number", "danger")
                     return render_template("admin_edit_user.html", edit_user=user)
 
             if user["id"] == admin_user["id"] and is_admin_checked == 0:
-                flash("Du kannst dir die eigenen Admin-Rechte nicht entziehen.", "danger")
+                flash_i18n("flash.self_remove_admin", "danger")
                 return render_template("admin_edit_user.html", edit_user=user)
 
             duplicate = db.execute(
@@ -484,7 +709,7 @@ def create_app(test_config=None):
                 (username, user_id),
             ).fetchone()
             if duplicate:
-                flash("Benutzername ist bereits vergeben.", "danger")
+                flash_i18n("flash.username_taken", "danger")
                 return render_template("admin_edit_user.html", edit_user=user)
 
             if telegram_id is not None:
@@ -493,7 +718,7 @@ def create_app(test_config=None):
                     (telegram_id, user_id),
                 ).fetchone()
                 if duplicate_tg:
-                    flash("Telegram-ID ist bereits einem anderen User zugeordnet.", "danger")
+                    flash_i18n("flash.telegram_id_taken", "danger")
                     return render_template("admin_edit_user.html", edit_user=user)
 
             db.execute(
@@ -508,7 +733,7 @@ def create_app(test_config=None):
                 )
 
             db.commit()
-            flash("User aktualisiert.", "success")
+            flash_i18n("flash.user_updated", "success")
             return redirect(url_for("admin_dashboard"))
 
         return render_template("admin_edit_user.html", edit_user=user)
@@ -525,15 +750,15 @@ def create_app(test_config=None):
         ).fetchone()
 
         if user is None:
-            flash("User nicht gefunden.", "warning")
+            flash_i18n("flash.user_not_found", "warning")
             return redirect(url_for("admin_dashboard"))
 
         if user["is_admin"]:
-            flash("Admins dürfen nicht gelöscht werden.", "danger")
+            flash_i18n("flash.delete_admin_forbidden", "danger")
             return redirect(url_for("admin_dashboard"))
 
         if user["id"] == admin_user["id"]:
-            flash("Du kannst dich nicht selbst löschen.", "danger")
+            flash_i18n("flash.delete_self_forbidden", "danger")
             return redirect(url_for("admin_dashboard"))
 
         db.execute(
@@ -544,7 +769,7 @@ def create_app(test_config=None):
         db.execute("DELETE FROM users WHERE id = ?", (user_id,))
         db.commit()
 
-        flash(f"User '{user['username']}' wurde gelöscht.", "info")
+        flash_i18n("flash.user_deleted", "info", username=user["username"])
         return redirect(url_for("admin_dashboard"))
 
     @app.route("/admin/entry/<int:entry_id>/edit", methods=["GET", "POST"])
@@ -562,7 +787,7 @@ def create_app(test_config=None):
             (entry_id,),
         ).fetchone()
         if entry is None:
-            flash("Eintrag nicht gefunden.", "warning")
+            flash_i18n("flash.entry_not_found", "warning")
             return redirect(url_for("admin_dashboard"))
 
         if request.method == "POST":
@@ -577,14 +802,14 @@ def create_app(test_config=None):
             except ValueError:
                 amount = 0
             if amount <= 0:
-                flash("Bitte eine gueltige Anzahl eintragen.", "danger")
+                flash_i18n("flash.invalid_amount", "danger")
             else:
                 db.execute(
                     "UPDATE beers SET amount = ?, drinking_date = ?, drink_type = ?, price_per_unit = ? WHERE id = ?",
                     (amount, date_raw, drink_type, price, entry_id),
                 )
                 db.commit()
-                flash("Eintrag aktualisiert.", "success")
+                flash_i18n("flash.entry_updated", "success")
                 return redirect(url_for("admin_dashboard"))
 
         return render_template("admin_edit_entry.html", entry=entry, drink_catalog=DRINK_CATALOG)
@@ -596,7 +821,7 @@ def create_app(test_config=None):
         db = get_db()
         db.execute("DELETE FROM beers WHERE id = ?", (entry_id,))
         db.commit()
-        flash("Eintrag gelöscht.", "info")
+        flash_i18n("flash.entry_deleted", "info")
         return redirect(url_for("admin_dashboard"))
 
     @app.route("/admin/export/month")
@@ -731,18 +956,18 @@ def create_app(test_config=None):
         ).fetchone()
 
         if entry is None:
-            flash("Eintrag nicht gefunden.", "warning")
+            flash_i18n("flash.entry_not_found", "warning")
             return redirect(url_for("dashboard"))
 
         if (entry["user_id"] != user["id"]) and (not is_admin_user(user)):
-            flash("Keine Berechtigung für diesen Eintrag.", "danger")
+            flash_i18n("flash.entry_permission_denied", "danger")
             return redirect(url_for("dashboard"))
 
         is_paid = 1 if request.form.get("is_paid") == "on" else 0
         method = request.form.get("method") or None
 
         if is_paid and method not in ("BAR", "PAYPAL"):
-            flash("Bitte eine gültige Zahlart wählen.", "danger")
+            flash_i18n("flash.payment_method_required", "danger")
             return redirect(request.referrer or url_for("dashboard"))
 
         db.execute(
@@ -759,7 +984,7 @@ def create_app(test_config=None):
         )
         db.commit()
 
-        flash("Zahlstatus aktualisiert.", "success")
+        flash_i18n("flash.payment_updated", "success")
         return redirect(request.referrer or url_for("dashboard"))
 
     return app

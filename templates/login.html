@@ -1,23 +1,24 @@
 {% extends 'base.html' %}
+{% set title = t('page.login.title') %}
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-12 col-md-6 col-lg-4">
-    <h1 class="h3 mb-3 text-center">Login</h1>
+    <h1 class="h3 mb-3 text-center">{{ t('login.heading') }}</h1>
     <div class="card shadow-sm">
       <div class="card-body">
         <form method="post" novalidate>
           <div class="mb-3">
-            <label for="username" class="form-label">Benutzername</label>
+            <label for="username" class="form-label">{{ t('form.username') }}</label>
             <input type="text" class="form-control" id="username" name="username" required autocomplete="username">
           </div>
           <div class="mb-3">
-            <label for="password" class="form-label">Passwort</label>
+            <label for="password" class="form-label">{{ t('form.password') }}</label>
             <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password">
           </div>
-          <button type="submit" class="btn btn-primary w-100">Einloggen</button>
+          <button type="submit" class="btn btn-primary w-100">{{ t('login.submit') }}</button>
         </form>
-        <p class="mt-3 small text-center mb-0">Noch kein Konto?
-          <a href="{{ url_for('register') }}">Jetzt registrieren</a>
+        <p class="mt-3 small text-center mb-0">{{ t('login.no_account') }}
+          <a href="{{ url_for('register') }}">{{ t('login.register_link') }}</a>
         </p>
       </div>
     </div>
@@ -29,16 +30,16 @@
   <div class="col-12 col-md-8 col-lg-6">
     <div class="card shadow-sm">
       <div class="card-body">
-        <h2 class="h6 mb-3 text-muted">&#x1F37A; Monatsstand {{ month_label }} (nur lesen)</h2>
+        <h2 class="h6 mb-3 text-muted">&#x1F37A; {{ t('login.monthly_status', month=month_label) }}</h2>
         <div class="table-responsive">
           <table class="table table-sm align-middle mb-0 small">
             <thead>
               <tr>
-                <th>Spieler</th>
-                <th class="text-end">Biere</th>
-                <th class="text-end">Gesamt</th>
-                <th class="text-end text-success">Bezahlt</th>
-                <th class="text-end text-warning">Offen</th>
+                <th>{{ t('table.player') }}</th>
+                <th class="text-end">{{ t('table.beers') }}</th>
+                <th class="text-end">{{ t('table.total') }}</th>
+                <th class="text-end text-success">{{ t('table.paid') }}</th>
+                <th class="text-end text-warning">{{ t('table.open') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -58,7 +59,7 @@
             </tbody>
             <tfoot class="table-group-divider">
               <tr class="fw-semibold">
-                <td>Gesamt</td>
+                <td>{{ t('table.total_row') }}</td>
                 <td class="text-end">{{ monthly_summary | sum(attribute='beers') }}</td>
                 <td class="text-end">{{ '%.2f'|format(monthly_summary | sum(attribute='total')) }} €</td>
                 <td class="text-end text-success">{{ '%.2f'|format(monthly_summary | sum(attribute='paid')) }} €</td>
