@@ -1,0 +1,43 @@
+{
+  "name": "VfB Grötzingen – AH Bierkässle",
+  "short_name": "Bierkässle",
+  "description": "Getränkeabrechnung für die Alte Herren des VfB Grötzingen",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#111318",
+  "theme_color": "#1c1f26",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "/static/VfB_Logo_II.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/VfB_Logo_II.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "sports"],
+  "shortcuts": [
+    {
+      "name": "Eintragen",
+      "short_name": "Eintragen",
+      "description": "Getränke eintragen",
+      "url": "/dashboard",
+      "icons": [{"src": "/static/VfB_Logo_II.jpg", "sizes": "96x96", "type": "image/jpeg"}]
+    },
+    {
+      "name": "Übersicht",
+      "short_name": "Übersicht",
+      "description": "Monatsübersicht ansehen",
+      "url": "/summary",
+      "icons": [{"src": "/static/VfB_Logo_II.jpg", "sizes": "96x96", "type": "image/jpeg"}]
+    }
+  ]
+}

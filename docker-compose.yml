@@ -12,6 +12,12 @@ services:
     volumes:
       - bierkaessle_data:/app/instance
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:1904/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   bierkaessle_bot:
     build: .
@@ -25,7 +31,8 @@ services:
     command: ["python", "telegram_bot.py"]
     restart: unless-stopped
     depends_on:
-      - bierkaessle_web
+      bierkaessle_web:
+        condition: service_healthy
 
 volumes:
   bierkaessle_data:
