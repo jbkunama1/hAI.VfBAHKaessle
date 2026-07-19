@@ -10,7 +10,7 @@
   --table-head-text: rgba(248, 249, 250, 0.7);
   --table-row-border: rgba(255, 255, 255, 0.06);
   --table-row-hover: rgba(255, 255, 255, 0.04);
-  --bubble: rgba(255, 255, 255, 0.12);
+  --bubble-color: rgba(255, 255, 255, 0.18);
   --logo-glow: rgba(0, 184, 148, 0.55);
   --logo-border: rgba(255, 255, 255, 0.18);
 }
@@ -26,15 +26,29 @@
   --table-head-text: rgba(26, 34, 48, 0.72);
   --table-row-border: rgba(26, 34, 48, 0.08);
   --table-row-hover: rgba(26, 34, 48, 0.04);
-  --bubble: rgba(26, 34, 48, 0.09);
+  --bubble-color: rgba(26, 34, 48, 0.13);
   --logo-glow: rgba(0, 184, 148, 0.3);
   --logo-border: rgba(26, 34, 48, 0.2);
 }
 
+/* Body: Hintergrund als ::before damit Bubbles (z-index:-1) sichtbar bleiben */
+html {
+  min-height: 100%;
+}
+
 body {
-  background: var(--app-bg);
+  position: relative;
   color: var(--app-text);
   min-height: 100vh;
+  background: transparent;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: var(--app-bg);
 }
 
 /* ===================== Hintergrund-Bubbles (alle Seiten) ===================== */
@@ -42,7 +56,7 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
   overflow: hidden;
 }
 
@@ -50,23 +64,35 @@ body {
   position: absolute;
   bottom: -60px;
   border-radius: 50%;
-  background: var(--bubble);
+  background: var(--bubble-color);
   animation: bubbleRise linear infinite;
   opacity: 0;
 }
 
-/* 8 Bubbles mit unterschiedlichen Größen, Positionen, Timings */
-.bg-bubbles span:nth-child(1) { left:  6%; width: 14px; height: 14px; animation-duration: 13s; animation-delay:  0s; }
-.bg-bubbles span:nth-child(2) { left: 18%; width:  9px; height:  9px; animation-duration: 10s; animation-delay:  2s; }
-.bg-bubbles span:nth-child(3) { left: 33%; width: 12px; height: 12px; animation-duration: 15s; animation-delay:  5s; }
-.bg-bubbles span:nth-child(4) { left: 50%; width:  7px; height:  7px; animation-duration: 11s; animation-delay:  1s; }
-.bg-bubbles span:nth-child(5) { left: 64%; width: 16px; height: 16px; animation-duration: 14s; animation-delay:  3.5s; }
-.bg-bubbles span:nth-child(6) { left: 76%; width: 10px; height: 10px; animation-duration: 12s; animation-delay:  7s; }
-.bg-bubbles span:nth-child(7) { left: 87%; width:  8px; height:  8px; animation-duration:  9s; animation-delay:  4s; }
-.bg-bubbles span:nth-child(8) { left: 95%; width: 13px; height: 13px; animation-duration: 16s; animation-delay:  9s; }
+.bg-bubbles span:nth-child(1) { left:  6%; width: 18px; height: 18px; animation-duration: 13s; animation-delay:  0s; }
+.bg-bubbles span:nth-child(2) { left: 18%; width: 11px; height: 11px; animation-duration: 10s; animation-delay:  2s; }
+.bg-bubbles span:nth-child(3) { left: 33%; width: 15px; height: 15px; animation-duration: 15s; animation-delay:  5s; }
+.bg-bubbles span:nth-child(4) { left: 50%; width:  9px; height:  9px; animation-duration: 11s; animation-delay:  1s; }
+.bg-bubbles span:nth-child(5) { left: 64%; width: 20px; height: 20px; animation-duration: 14s; animation-delay:  3.5s; }
+.bg-bubbles span:nth-child(6) { left: 76%; width: 13px; height: 13px; animation-duration: 12s; animation-delay:  7s; }
+.bg-bubbles span:nth-child(7) { left: 87%; width: 10px; height: 10px; animation-duration:  9s; animation-delay:  4s; }
+.bg-bubbles span:nth-child(8) { left: 95%; width: 16px; height: 16px; animation-duration: 16s; animation-delay:  9s; }
 
-/* Navbar und Content liegen über den Bubbles */
-.navbar, .container, .container-fluid {
+@keyframes bubbleRise {
+  0%   { transform: translateY(0)        scale(0.8); opacity: 0;    }
+  8%   {                                             opacity: 0.45; }
+  92%  {                                             opacity: 0.35; }
+  100% { transform: translateY(-105vh)   scale(1.2); opacity: 0;    }
+}
+
+/* Navbar und Content liegen sicher über Bubbles */
+.navbar {
+  position: relative;
+  z-index: 10;
+}
+
+.container,
+.container-fluid {
   position: relative;
   z-index: 1;
 }
@@ -305,13 +331,6 @@ table thead th {
 @keyframes aboutFadeIn {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes bubbleRise {
-  0%   { transform: translateY(0) scale(0.9);   opacity: 0; }
-  10%  { opacity: 0.3; }
-  90%  { opacity: 0.25; }
-  100% { transform: translateY(-110vh) scale(1.15); opacity: 0; }
 }
 
 /* ===================== Tablet (< 992px) ===================== */
