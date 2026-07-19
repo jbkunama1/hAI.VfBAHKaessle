@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtuelle Umgebungen
+.venv/
+venv/
+env/
+
+# Flask / App
+instance/
+*.sqlite3
+*.db
+
+# Umgebungsvariablen
+.env
+.env.*
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Betriebssystem
+.DS_Store
+Thumbs.db
+
+# Backups
+backups/
+*.bak

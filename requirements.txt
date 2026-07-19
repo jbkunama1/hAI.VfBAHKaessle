@@ -2,3 +2,5 @@ Flask>=3.0
 Werkzeug>=3.0
 gunicorn>=21.0
 python-telegram-bot>=21.0
+Flask-Limiter>=3.5
+Flask-WTF>=1.2

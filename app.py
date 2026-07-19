@@ -1,6 +1,7 @@
 import csv
 import os
 import sqlite3
+import sys
 from datetime import date
 
 from flask import (
@@ -14,9 +15,21 @@ from flask import (
     flash,
     make_response,
 )
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# ──────────────────────────── Getränke-Katalog ────────────────────────────
+_REQUIRED_ENV = ["SECRET_KEY", "ADMIN_USERNAMES"]
+_missing = [v for v in _REQUIRED_ENV if not os.environ.get(v, "").strip()]
+if _missing:
+    print(
+        f"[FEHLER] Fehlende Pflicht-Umgebungsvariablen: {', '.join(_missing)}\n"
+        "Bitte in der .env auf dem Host setzen. Anwendung wird beendet.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
 DRINK_CATALOG = [
     {"key": "bier",   "label": "🍺 Bier",           "price": 1.50},
     {"key": "radler", "label": "🍋 Radler",          "price": 1.50},
@@ -92,6 +105,10 @@ TRANSLATIONS = {
     "flash.entry_permission_denied": {"de": "Keine Berechtigung für diesen Eintrag.", "en": "No permission for this entry."},
     "flash.payment_method_required": {"de": "Bitte eine gültige Zahlart wählen.", "en": "Please choose a valid payment method."},
     "flash.payment_updated": {"de": "Zahlstatus aktualisiert.", "en": "Payment status updated."},
+    "flash.rate_limit": {
+        "de": "Zu viele Versuche. Bitte kurz warten.",
+        "en": "Too many attempts. Please wait a moment.",
+    },
     "page.login.title": {"de": "Login", "en": "Login"},
     "page.register.title": {"de": "Registrieren", "en": "Register"},
     "page.about.title": {"de": "Über uns", "en": "About us"},
@@ -206,9 +223,10 @@ TRANSLATIONS = {
 def create_app(test_config=None):
     app = Flask(__name__)
     app.config.from_mapping(
-        SECRET_KEY=os.environ.get("SECRET_KEY", "dev-change-me"),
+        SECRET_KEY=os.environ.get("SECRET_KEY"),
         DATABASE=os.path.join(app.instance_path, "bierkaessle.sqlite3"),
         BEER_PRICE=float(os.environ.get("BEER_PRICE", "1.50")),
+        WTF_CSRF_ENABLED=True,
     )
 
     if test_config is not None:
@@ -216,7 +234,15 @@ def create_app(test_config=None):
 
     os.makedirs(app.instance_path, exist_ok=True)
 
-    # ---------------------- Datenbank-Helfer ----------------------
+    csrf = CSRFProtect(app)
+
+    limiter = Limiter(
+        get_remote_address,
+        app=app,
+        default_limits=[],
+        storage_uri="memory://",
+    )
+
     def get_db():
         if "db" not in g:
             g.db = sqlite3.connect(
@@ -268,7 +294,6 @@ def create_app(test_config=None):
             );
             """
         )
-        # Migration: Spalten ergaenzen falls noch nicht vorhanden (Bestandsdatenbank)
         try:
             db.execute("ALTER TABLE beers ADD COLUMN drink_type TEXT NOT NULL DEFAULT 'bier'")
         except Exception:
@@ -282,7 +307,6 @@ def create_app(test_config=None):
     with app.app_context():
         init_db()
 
-    # ---------------------- User/Role-Helpers ----------------------
     def current_user():
         uid = session.get("user_id")
         if not uid:
@@ -378,8 +402,13 @@ def create_app(test_config=None):
 
         return wrapped
 
-    # ---------------------- Auth-Routen ----------------------
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        flash_i18n("flash.rate_limit", "danger")
+        return redirect(url_for("login")), 429
+
     @app.route("/register", methods=["GET", "POST"])
+    @limiter.limit("10 per minute")
     def register():
         if request.method == "POST":
             username = request.form.get("username", "").strip()
@@ -412,6 +441,7 @@ def create_app(test_config=None):
         return render_template("register.html")
 
     @app.route("/login", methods=["GET", "POST"])
+    @limiter.limit("5 per minute")
     def login():
         if request.method == "POST":
             username = request.form.get("username", "").strip()
@@ -435,7 +465,6 @@ def create_app(test_config=None):
         return render_template("login.html", **_login_context())
 
     def _login_context():
-        """Monatliche Zusammenfassung fuer die Login-Seite (schreibgeschuetzt)."""
         db = get_db()
         today = date.today()
         month_str = f"{today.year:04d}-{today.month:02d}"
@@ -482,7 +511,6 @@ def create_app(test_config=None):
         flash_i18n("flash.logout_success", "info")
         return redirect(url_for("login"))
 
-    # ---------------------- Kernfunktionen ----------------------
     @app.route("/")
     def index():
         if current_user() is None:
@@ -632,7 +660,6 @@ def create_app(test_config=None):
             month=month,
         )
 
-    # ---------------------- Admin-Bereich ----------------------
     @app.route("/admin")
     @login_required
     @admin_required
