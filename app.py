@@ -1,5 +1,6 @@
 import csv
 import os
+import re
 import sqlite3
 import sys
 from datetime import date
@@ -54,6 +55,18 @@ ALLOWED_REDIRECT_ENDPOINTS = {
     "admin_dashboard",
     "admin_report_balances",
 }
+
+_MOBILE_UA_RE = re.compile(
+    r"(android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet|"
+    r"webos|windows phone|kindle|silk|fennec|symbian|palm|series60)",
+    re.IGNORECASE,
+)
+
+
+def detect_mobile():
+    ua = request.headers.get("User-Agent", "")
+    return bool(_MOBILE_UA_RE.search(ua))
+
 
 TRANSLATIONS = {
     "app.title": {
@@ -361,11 +374,12 @@ def create_app(test_config=None):
         return str(message)
 
     @app.context_processor
-    def inject_roles():
+    def inject_globals():
         user = current_user()
         return {
             "current_user_obj": user,
             "is_admin": is_admin_user(user),
+            "is_mobile": detect_mobile(),
             "drink_catalog": DRINK_CATALOG,
             "drink_label": DRINK_LABEL,
             "t": translate,

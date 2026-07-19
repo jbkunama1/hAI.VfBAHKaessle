@@ -33,6 +33,7 @@ body {
   min-height: 100vh;
 }
 
+/* ===================== Navbar ===================== */
 .navbar-brand {
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -47,6 +48,7 @@ body {
   min-width: 2.35rem;
 }
 
+/* ===================== Cards ===================== */
 .card {
   border-radius: 1rem;
   border: 1px solid var(--card-border);
@@ -54,6 +56,7 @@ body {
   background: var(--card-bg);
 }
 
+/* ===================== Buttons ===================== */
 .btn-primary,
 .btn-success {
   border-radius: 999px;
@@ -79,6 +82,7 @@ body {
   filter: brightness(1.03);
 }
 
+/* ===================== Tables ===================== */
 table thead th {
   border-bottom-width: 1px;
   text-transform: uppercase;
@@ -86,6 +90,7 @@ table thead th {
   letter-spacing: 0.05em;
 }
 
+/* ===================== Admin ===================== */
 .admin-title {
   font-size: 1.6rem;
   font-weight: 700;
@@ -140,6 +145,7 @@ table thead th {
   background: var(--table-row-hover);
 }
 
+/* ===================== Badges ===================== */
 .badge-admin {
   background: linear-gradient(135deg, #fdcb6e, #e17055);
   color: #111318;
@@ -183,10 +189,12 @@ table thead th {
   border: 1px solid rgba(255, 118, 117, 0.35);
 }
 
+/* ===================== Payment Forms ===================== */
 .payment-form {
   flex-wrap: wrap;
 }
 
+/* ===================== Outline Buttons ===================== */
 .btn-outline-info,
 .btn-outline-danger,
 .btn-outline-light {
@@ -208,6 +216,7 @@ table thead th {
   width: 2.5em;
 }
 
+/* ===================== Admin Nav Link ===================== */
 .nav-admin-link {
   color: #fdcb6e !important;
   font-weight: 600;
@@ -217,6 +226,7 @@ table thead th {
   color: #ffeaa7 !important;
 }
 
+/* ===================== About Page ===================== */
 .page-about {
   position: relative;
   overflow-x: clip;
@@ -262,42 +272,166 @@ table thead th {
 .about-bubbles span:nth-child(5) { left: 90%; animation-delay: 5.5s; width: 7px; height: 7px; }
 
 @keyframes aboutFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes bubbleRise {
-  0% {
-    transform: translateY(0) scale(0.9);
-    opacity: 0;
-  }
-  15% {
-    opacity: 0.35;
-  }
-  100% {
-    transform: translateY(-110vh) scale(1.15);
-    opacity: 0;
-  }
+  0%   { transform: translateY(0) scale(0.9); opacity: 0; }
+  15%  { opacity: 0.35; }
+  100% { transform: translateY(-110vh) scale(1.15); opacity: 0; }
 }
 
+/* ===================== Tablet (< 992px) ===================== */
 @media (max-width: 991.98px) {
   .nav-control-form {
     margin-top: 0.45rem;
   }
 }
 
-@media (max-width: 576px) {
+/* ===================== Mobile (< 768px) ===================== */
+@media (max-width: 767.98px) {
+  /* Vollbreite Container */
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Navbar kompakter */
+  .navbar {
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+  }
+
   .navbar-brand {
+    font-size: 0.75rem;
+  }
+
+  .brand-text {
+    display: none;
+  }
+
+  /* Groessere Touch-Targets fuer Buttons & Links */
+  .btn {
+    min-height: 44px;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
+
+  .nav-link {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+    font-size: 1rem;
+  }
+
+  /* Inputs groesser */
+  .form-control,
+  .form-select {
+    font-size: 1rem;
+    min-height: 44px;
+  }
+
+  /* Karten volle Breite, weniger Padding */
+  .card {
+    border-radius: 0.75rem;
+  }
+
+  .card-body {
+    padding: 1rem 0.85rem;
+  }
+
+  /* Tabellen horizontal scrollbar */
+  .table-responsive {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    font-size: 0.82rem;
+  }
+
+  table thead th {
+    font-size: 0.68rem;
+  }
+
+  /* Stat-Cards 2x2 Grid bleibt, nur etwas kompakter */
+  .stat-card {
+    padding: 0.7rem 0.85rem;
+  }
+
+  .stat-value {
+    font-size: 1.3rem;
+  }
+
+  .admin-title {
+    font-size: 1.25rem;
+  }
+
+  /* Payment-Select schmaeler */
+  .payment-form .form-select {
+    max-width: 110px;
     font-size: 0.8rem;
+    min-height: 38px;
+  }
+
+  /* Buttons in Tabellen kleiner halten */
+  .admin-table .btn-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.55rem;
+    min-height: 36px;
+  }
+
+  /* Login/Register Karte volle Breite */
+  .col-md-6, .col-lg-4, .col-md-8, .col-lg-6 {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 
+/* ===================== Small Mobile (< 480px) ===================== */
+@media (max-width: 479.98px) {
+  .stat-value {
+    font-size: 1.1rem;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+  }
+
+  table {
+    font-size: 0.76rem;
+  }
+
+  .badge-admin,
+  .badge-user,
+  .badge-paid,
+  .badge-open {
+    font-size: 0.65rem;
+    padding: 0.25em 0.5em;
+  }
+}
+
+/* ===================== Body mit is-mobile Klasse ===================== */
+body.is-mobile .container {
+  padding-left: 0.6rem;
+  padding-right: 0.6rem;
+}
+
+body.is-mobile .card {
+  border-radius: 0.65rem;
+  backdrop-filter: none; /* Performance auf Mobile */
+}
+
+body.is-mobile table {
+  font-size: 0.8rem;
+}
+
+body.is-mobile .btn-primary,
+body.is-mobile .btn-success {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+/* ===================== Reduced Motion ===================== */
 @media (prefers-reduced-motion: reduce) {
   .about-card,
   .about-logo,
