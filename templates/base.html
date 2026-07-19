@@ -28,26 +28,24 @@
 <body class="{% block body_class %}{% endblock %}{% if is_mobile %} is-mobile{% endif %}">
   <nav class="navbar navbar-expand-lg navbar-dark{% if is_mobile %} navbar-mobile{% endif %}">
     <div class="container{% if is_mobile %}-fluid px-3{% endif %}">
+
+      <!-- Brand / Logo -->
       <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('dashboard') if session.get('user_id') else url_for('login') }}">
         <img src="{{ url_for('static', filename='VfB_Logo_II.jpg') }}" alt="VfB Grötzingen Logo" class="navbar-logo">
         <span class="brand-text">{{ t('app.title') }}</span>
       </a>
-      <div class="d-flex align-items-center gap-2 ms-auto">
-        <form method="post" action="{{ url_for('set_theme') }}" class="d-flex align-items-center nav-control-form" onsubmit="localStorage.setItem('vfb-theme', '{{ 'light' if current_theme == 'dark' else 'dark' }}')">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <input type="hidden" name="next_endpoint" value="{{ request.endpoint or 'index' }}">
-          <input type="hidden" name="theme" value="{{ 'light' if current_theme == 'dark' else 'dark' }}">
-          <button type="submit" class="btn btn-sm btn-outline-light nav-switch-btn" title="{{ t('switch.theme') }}">
-            {{ '☀️' if current_theme == 'dark' else '🌙' }}
-          </button>
-        </form>
-        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-      </div>
+
+      <!-- Burger toggle -->
+      <button class="navbar-toggler border-0 ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <!-- Collapsible nav -->
       <div class="collapse navbar-collapse" id="navMain">
         <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+
           <li class="nav-item"><a class="nav-link" href="{{ url_for('about') }}">{{ t('nav.about') }}</a></li>
+
           {% if session.get('user_id') %}
           <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">{{ t('nav.dashboard') }}</a></li>
           <li class="nav-item"><a class="nav-link" href="{{ url_for('summary') }}">{{ t('nav.summary') }}</a></li>
@@ -60,6 +58,8 @@
           <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">{{ t('nav.login') }}</a></li>
           <li class="nav-item"><a class="nav-link" href="{{ url_for('register') }}">{{ t('nav.register') }}</a></li>
           {% endif %}
+
+          <!-- Sprachauswahl -->
           <li class="nav-item">
             <form method="post" action="{{ url_for('set_language') }}" class="d-flex align-items-center nav-control-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -70,6 +70,19 @@
               </button>
             </form>
           </li>
+
+          <!-- Hell/Dunkel Toggle --> 
+          <li class="nav-item">
+            <form method="post" action="{{ url_for('set_theme') }}" class="d-flex align-items-center nav-control-form" onsubmit="localStorage.setItem('vfb-theme', '{{ 'light' if current_theme == 'dark' else 'dark' }}')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="next_endpoint" value="{{ request.endpoint or 'index' }}">
+              <input type="hidden" name="theme" value="{{ 'light' if current_theme == 'dark' else 'dark' }}">
+              <button type="submit" class="btn btn-sm btn-outline-light nav-switch-btn" title="{{ t('switch.theme') }}">
+                {{ '☀️' if current_theme == 'dark' else '🌙' }}
+              </button>
+            </form>
+          </li>
+
         </ul>
       </div>
     </div>
