@@ -54,8 +54,8 @@ body {
 
 /* ===================== Navbar Logo ===================== */
 .navbar-logo {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: 2px solid var(--logo-border);
   object-fit: cover;
@@ -330,10 +330,9 @@ table thead th {
     display: none;
   }
 
-  /* Logo auf Mobile etwas kleiner damit Navbar nicht zu hoch */
   .navbar-logo {
-    width: 38px;
-    height: 38px;
+    width: 32px;
+    height: 32px;
   }
 
   .btn {
@@ -407,8 +406,8 @@ table thead th {
 /* ===================== Small Mobile (< 480px) ===================== */
 @media (max-width: 479.98px) {
   .navbar-logo {
-    width: 34px;
-    height: 34px;
+    width: 28px;
+    height: 28px;
   }
 
   .stat-value {
