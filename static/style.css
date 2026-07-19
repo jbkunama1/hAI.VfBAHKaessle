@@ -11,6 +11,8 @@
   --table-row-border: rgba(255, 255, 255, 0.06);
   --table-row-hover: rgba(255, 255, 255, 0.04);
   --bubble: rgba(255, 255, 255, 0.12);
+  --logo-glow: rgba(0, 184, 148, 0.55);
+  --logo-border: rgba(255, 255, 255, 0.18);
 }
 
 [data-bs-theme="light"] {
@@ -25,6 +27,8 @@
   --table-row-border: rgba(26, 34, 48, 0.08);
   --table-row-hover: rgba(26, 34, 48, 0.04);
   --bubble: rgba(26, 34, 48, 0.09);
+  --logo-glow: rgba(0, 184, 148, 0.3);
+  --logo-border: rgba(26, 34, 48, 0.2);
 }
 
 body {
@@ -46,6 +50,23 @@ body {
 
 .nav-switch-btn {
   min-width: 2.35rem;
+}
+
+/* ===================== Navbar Logo ===================== */
+.navbar-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--logo-border);
+  object-fit: cover;
+  box-shadow: 0 0 10px var(--logo-glow), 0 2px 8px rgba(0,0,0,0.35);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  flex-shrink: 0;
+}
+
+.navbar-brand:hover .navbar-logo {
+  transform: scale(1.1) rotate(-4deg);
+  box-shadow: 0 0 18px var(--logo-glow), 0 4px 14px rgba(0,0,0,0.45);
 }
 
 /* ===================== Cards ===================== */
@@ -291,13 +312,11 @@ table thead th {
 
 /* ===================== Mobile (< 768px) ===================== */
 @media (max-width: 767.98px) {
-  /* Vollbreite Container */
   .container {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
 
-  /* Navbar kompakter */
   .navbar {
     padding-top: 0.4rem;
     padding-bottom: 0.4rem;
@@ -311,7 +330,12 @@ table thead th {
     display: none;
   }
 
-  /* Groessere Touch-Targets fuer Buttons & Links */
+  /* Logo auf Mobile etwas kleiner damit Navbar nicht zu hoch */
+  .navbar-logo {
+    width: 38px;
+    height: 38px;
+  }
+
   .btn {
     min-height: 44px;
     padding-top: 0.55rem;
@@ -324,14 +348,12 @@ table thead th {
     font-size: 1rem;
   }
 
-  /* Inputs groesser */
   .form-control,
   .form-select {
     font-size: 1rem;
     min-height: 44px;
   }
 
-  /* Karten volle Breite, weniger Padding */
   .card {
     border-radius: 0.75rem;
   }
@@ -340,7 +362,6 @@ table thead th {
     padding: 1rem 0.85rem;
   }
 
-  /* Tabellen horizontal scrollbar */
   .table-responsive {
     -webkit-overflow-scrolling: touch;
   }
@@ -353,7 +374,6 @@ table thead th {
     font-size: 0.68rem;
   }
 
-  /* Stat-Cards 2x2 Grid bleibt, nur etwas kompakter */
   .stat-card {
     padding: 0.7rem 0.85rem;
   }
@@ -366,21 +386,18 @@ table thead th {
     font-size: 1.25rem;
   }
 
-  /* Payment-Select schmaeler */
   .payment-form .form-select {
     max-width: 110px;
     font-size: 0.8rem;
     min-height: 38px;
   }
 
-  /* Buttons in Tabellen kleiner halten */
   .admin-table .btn-sm {
     font-size: 0.75rem;
     padding: 0.25rem 0.55rem;
     min-height: 36px;
   }
 
-  /* Login/Register Karte volle Breite */
   .col-md-6, .col-lg-4, .col-md-8, .col-lg-6 {
     width: 100% !important;
     max-width: 100% !important;
@@ -389,6 +406,11 @@ table thead th {
 
 /* ===================== Small Mobile (< 480px) ===================== */
 @media (max-width: 479.98px) {
+  .navbar-logo {
+    width: 34px;
+    height: 34px;
+  }
+
   .stat-value {
     font-size: 1.1rem;
   }
@@ -418,7 +440,7 @@ body.is-mobile .container {
 
 body.is-mobile .card {
   border-radius: 0.65rem;
-  backdrop-filter: none; /* Performance auf Mobile */
+  backdrop-filter: none;
 }
 
 body.is-mobile table {
@@ -435,7 +457,8 @@ body.is-mobile .btn-success {
 @media (prefers-reduced-motion: reduce) {
   .about-card,
   .about-logo,
-  .about-bubbles span {
+  .about-bubbles span,
+  .navbar-logo {
     animation: none !important;
     transition: none !important;
     transform: none !important;
