@@ -1,40 +1,33 @@
 {% extends 'base.html' %}
 {% set title = t('page.admin_edit_user.title') %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
-  <div>
-    <h1 class="admin-title mb-1">{{ t('admin_edit_user.heading') }}</h1>
-    <p class="admin-subtitle mb-0">{{ edit_user.username }}</p>
-  </div>
-  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light btn-sm">{{ t('admin.back_overview') }}</a>
-</div>
+<div class="row justify-content-center">
+  <div class="col-12 col-md-7 col-lg-5">
+    <h1 class="h3 mb-1">{{ t('admin_edit_user.heading') }}</h1>
+    <p class="text-muted mb-3">{{ edit_user.username }}</p>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-sm btn-outline-secondary mb-4">{{ t('admin.back_overview') }}</a>
 
-<div class="card" style="max-width: 560px;">
-  <div class="card-body">
-    <form method="post">
+    <form method="post" class="card card-body shadow-sm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="mb-3">
-        <label for="username" class="form-label small text-uppercase text-muted">{{ t('form.username') }}</label>
+        <label for="username" class="form-label">{{ t('form.username') }}</label>
         <input type="text" id="username" name="username" class="form-control" value="{{ edit_user.username }}" required>
       </div>
-
       <div class="mb-3">
-        <label for="telegram_id" class="form-label small text-uppercase text-muted">{{ t('form.telegram_id') }}</label>
+        <label for="telegram_id" class="form-label">{{ t('form.telegram_id') }} <span class="text-muted small">({{ t('form.optional') }})</span></label>
         <input type="number" id="telegram_id" name="telegram_id" class="form-control" value="{{ edit_user.telegram_id or '' }}" placeholder="{{ t('form.optional') }}">
       </div>
-
       <div class="mb-3">
-        <label for="new_password" class="form-label small text-uppercase text-muted">{{ t('form.new_password') }}</label>
+        <label for="new_password" class="form-label">{{ t('form.new_password') }}</label>
         <input type="password" id="new_password" name="new_password" class="form-control" placeholder="{{ t('admin_edit_user.password_hint') }}">
       </div>
-
-      <div class="form-check form-switch mb-4">
+      <div class="mb-3 form-check form-switch">
         <input class="form-check-input" type="checkbox" role="switch" id="is_admin" name="is_admin" {% if edit_user.is_admin %}checked{% endif %}>
         <label class="form-check-label" for="is_admin">{{ t('form.admin_rights') }}</label>
       </div>
-
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary">{{ t('action.save') }}</button>
-        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light">{{ t('action.cancel') }}</a>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">{{ t('action.cancel') }}</a>
       </div>
     </form>
   </div>

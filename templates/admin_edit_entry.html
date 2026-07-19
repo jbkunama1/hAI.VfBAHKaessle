@@ -2,29 +2,33 @@
 {% set title = t('page.admin_edit_entry.title') %}
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-12 col-md-6 col-lg-5">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h1 class="h4 mb-3">{{ t('admin_edit_entry.heading') }}</h1>
-        <p class="small text-muted mb-3">
-          {{ t('table.player') }}: <strong>{{ entry.username }}</strong>
-        </p>
-        <form method="post" novalidate>
-          <div class="mb-3">
-            <label for="drinking_date" class="form-label">{{ t('form.date') }}</label>
-            <input type="date" class="form-control" id="drinking_date" name="drinking_date" value="{{ entry.drinking_date }}" required>
-          </div>
-          <div class="mb-3">
-            <label for="amount" class="form-label">{{ t('form.beer_count') }}</label>
-            <input type="number" class="form-control" id="amount" name="amount" value="{{ entry.amount }}" min="1" step="1" required>
-          </div>
-          <div class="d-flex justify-content-between">
-            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">{{ t('action.cancel') }}</a>
-            <button type="submit" class="btn btn-primary">{{ t('action.save') }}</button>
-          </div>
-        </form>
+  <div class="col-12 col-md-7 col-lg-5">
+    <h1 class="h3 mb-3">{{ t('admin_edit_entry.heading') }}</h1>
+    <p class="mb-3">{{ t('table.player') }}: <strong>{{ entry.username }}</strong></p>
+
+    <form method="post" class="card card-body shadow-sm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label for="drinking_date" class="form-label">{{ t('form.date') }}</label>
+        <input type="date" class="form-control" id="drinking_date" name="drinking_date" value="{{ entry.drinking_date }}" required>
       </div>
-    </div>
+      <div class="mb-3">
+        <label for="drink_type" class="form-label">{{ t('table.drink') }}</label>
+        <select class="form-select" id="drink_type" name="drink_type">
+          {% for d in drink_catalog %}
+          <option value="{{ d.key }}" {% if entry.drink_type == d.key %}selected{% endif %}>{{ d.label }} – {{ '%.2f'|format(d.price) }} €</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="amount" class="form-label">{{ t('form.beer_count') }}</label>
+        <input type="number" class="form-control" id="amount" name="amount" value="{{ entry.amount }}" min="1" step="1" required>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">{{ t('action.cancel') }}</a>
+        <button type="submit" class="btn btn-primary">{{ t('action.save') }}</button>
+      </div>
+    </form>
   </div>
 </div>
 {% endblock %}

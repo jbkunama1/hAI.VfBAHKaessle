@@ -75,6 +75,7 @@
                 {% if not u.is_admin %}
                 <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" class="d-inline"
                       onsubmit="return confirm({{ t('confirm.delete_user', username=u.username)|tojson }});">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-sm btn-outline-danger">{{ t('action.delete') }}</button>
                 </form>
                 {% endif %}
@@ -141,6 +142,7 @@
             <td>{{ e.created_at }}</td>
             <td>
               <form method="post" action="{{ url_for('update_payment', entry_id=e.id) }}" class="d-flex align-items-center gap-2 payment-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="checkbox" name="is_paid" class="form-check-input" {% if e.is_paid %}checked{% endif %} onchange="this.form.submit()">
                 {% if e.is_paid %}
                   <span class="badge badge-paid">{{ t('payment.paid') }}</span>
@@ -159,6 +161,7 @@
                 <a href="{{ url_for('admin_edit_entry', entry_id=e.id) }}" class="btn btn-sm btn-outline-info">{{ t('action.change') }}</a>
                 <form method="post" action="{{ url_for('admin_delete_entry', entry_id=e.id) }}" class="d-inline"
                       onsubmit="return confirm({{ t('confirm.delete_entry')|tojson }});">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-sm btn-outline-danger">{{ t('action.delete') }}</button>
                 </form>
               </div>
