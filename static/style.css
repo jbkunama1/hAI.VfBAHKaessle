@@ -37,6 +37,40 @@ body {
   min-height: 100vh;
 }
 
+/* ===================== Hintergrund-Bubbles (alle Seiten) ===================== */
+.bg-bubbles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-bubbles span {
+  position: absolute;
+  bottom: -60px;
+  border-radius: 50%;
+  background: var(--bubble);
+  animation: bubbleRise linear infinite;
+  opacity: 0;
+}
+
+/* 8 Bubbles mit unterschiedlichen Größen, Positionen, Timings */
+.bg-bubbles span:nth-child(1) { left:  6%; width: 14px; height: 14px; animation-duration: 13s; animation-delay:  0s; }
+.bg-bubbles span:nth-child(2) { left: 18%; width:  9px; height:  9px; animation-duration: 10s; animation-delay:  2s; }
+.bg-bubbles span:nth-child(3) { left: 33%; width: 12px; height: 12px; animation-duration: 15s; animation-delay:  5s; }
+.bg-bubbles span:nth-child(4) { left: 50%; width:  7px; height:  7px; animation-duration: 11s; animation-delay:  1s; }
+.bg-bubbles span:nth-child(5) { left: 64%; width: 16px; height: 16px; animation-duration: 14s; animation-delay:  3.5s; }
+.bg-bubbles span:nth-child(6) { left: 76%; width: 10px; height: 10px; animation-duration: 12s; animation-delay:  7s; }
+.bg-bubbles span:nth-child(7) { left: 87%; width:  8px; height:  8px; animation-duration:  9s; animation-delay:  4s; }
+.bg-bubbles span:nth-child(8) { left: 95%; width: 13px; height: 13px; animation-duration: 16s; animation-delay:  9s; }
+
+/* Navbar und Content liegen über den Bubbles */
+.navbar, .container, .container-fluid {
+  position: relative;
+  z-index: 1;
+}
+
 /* ===================== Navbar ===================== */
 .navbar-brand {
   letter-spacing: 0.04em;
@@ -268,38 +302,15 @@ table thead th {
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
 }
 
-.about-bubbles {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-}
-
-.about-bubbles span {
-  position: absolute;
-  bottom: -40px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--bubble);
-  animation: bubbleRise 11s linear infinite;
-  opacity: 0.35;
-}
-
-.about-bubbles span:nth-child(1) { left: 8%; animation-delay: 0s; }
-.about-bubbles span:nth-child(2) { left: 24%; animation-delay: 1.8s; width: 8px; height: 8px; }
-.about-bubbles span:nth-child(3) { left: 48%; animation-delay: 4.2s; }
-.about-bubbles span:nth-child(4) { left: 73%; animation-delay: 2.5s; width: 10px; height: 10px; }
-.about-bubbles span:nth-child(5) { left: 90%; animation-delay: 5.5s; width: 7px; height: 7px; }
-
 @keyframes aboutFadeIn {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes bubbleRise {
-  0%   { transform: translateY(0) scale(0.9); opacity: 0; }
-  15%  { opacity: 0.35; }
+  0%   { transform: translateY(0) scale(0.9);   opacity: 0; }
+  10%  { opacity: 0.3; }
+  90%  { opacity: 0.25; }
   100% { transform: translateY(-110vh) scale(1.15); opacity: 0; }
 }
 
@@ -456,7 +467,7 @@ body.is-mobile .btn-success {
 @media (prefers-reduced-motion: reduce) {
   .about-card,
   .about-logo,
-  .about-bubbles span,
+  .bg-bubbles span,
   .navbar-logo {
     animation: none !important;
     transition: none !important;
