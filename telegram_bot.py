@@ -55,7 +55,6 @@ def init_db():
         );
         """
     )
-    # Migration: Spalten ergaenzen falls noch nicht vorhanden
     try:
         conn.execute("ALTER TABLE beers ADD COLUMN drink_type TEXT NOT NULL DEFAULT 'bier'")
     except Exception:
@@ -97,6 +96,47 @@ def month_str_today() -> str:
     return f"{today.year:04d}-{today.month:02d}"
 
 
+# ──────────────────────────── Hilfsfunktion Eintrag ────────────────────────────
+
+async def _eintragen(update: Update, drink_key: str, args) -> None:
+    """Gemeinsame Logik für alle Direktbefehle (/bier, /radler, /cola, /wasser)."""
+    user = get_user_by_telegram_id(update.effective_user.id)
+    if user is None:
+        await update.message.reply_text("Nicht verknüpft. Bitte /link <username> nutzen.")
+        return
+
+    amount = 1
+    if args:
+        try:
+            amount = int(args[0])
+        except ValueError:
+            info = DRINK_CATALOG[drink_key]
+            await update.message.reply_text(
+                f"Bitte eine ganze Zahl angeben, z. B. /{drink_key} 3"
+            )
+            return
+
+    if amount <= 0:
+        await update.message.reply_text("Die Anzahl muss größer als 0 sein.")
+        return
+
+    today = date.today().isoformat()
+    info = DRINK_CATALOG[drink_key]
+    price = info["price"]
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO beers (user_id, drinking_date, amount, drink_type, price_per_unit) VALUES (?, ?, ?, ?, ?)",
+        (user["id"], today, amount, drink_key, price),
+    )
+    conn.commit()
+    conn.close()
+
+    euros = amount * price
+    await update.message.reply_text(
+        f"✅ {amount}× {info['label']} für {today} eingetragen.\nKosten: {euros:.2f} €"
+    )
+
+
 # ──────────────────────────── Befehle ────────────────────────────
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -114,17 +154,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "🍺 VfB Grötzingen AH Bierkässle Bot\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "📋 Befehle:\n"
-        "/link <username>          – Telegram mit Web-Account verknüpfen\n\n"
+        "/link <username>   – Telegram mit Web-Account verknüpfen\n\n"
         "🥤 Getränke eintragen:\n"
-        "/bier [anzahl]            – 🍺 Bier        1,50 €\n"
-        "/trinken radler [anzahl]  – 🍋 Radler       1,50 €\n"
-        "/trinken cola [anzahl]    – 🥤 Cola/Fanta   1,50 €\n"
-        "/trinken wasser [anzahl]  – 💧 Wasser       1,00 €\n"
-        "/getraenke                – vollständige Preisliste\n\n"
+        "/bier [anzahl]     – 🍺 Bier             1,50 €\n"
+        "/radler [anzahl]   – 🍋 Radler            1,50 €\n"
+        "/cola [anzahl]     – 🥤 Cola/Fanta/Mezzo  1,50 €\n"
+        "/wasser [anzahl]   – 💧 Wasser            1,00 €\n"
+        "/getraenke         – vollständige Preisliste\n\n"
         "📊 Auswertung:\n"
-        "/status  – eigener Monatsstand (Summe + offen/bezahlt)\n"
-        "/liste   – eigene Einzeleinträge diesen Monat\n\n"
-        "/help    – diese Hilfe"
+        "/uebersicht – Monatsstand aller Spieler (wie Startseite)\n"
+        "/status     – eigener Monatsstand (Summe + offen/bezahlt)\n"
+        "/liste      – eigene Einzeleinträge diesen Monat\n\n"
+        "/help       – diese Hilfe"
         + admin_hint
     )
     await update.message.reply_text(text)
@@ -138,8 +179,7 @@ async def getraenke(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Zeigt die aktuelle Preisliste."""
     lines = ["🧾 Preisliste:\n"]
     for key, info in DRINK_CATALOG.items():
-        lines.append(f"{info['label']}: {info['price']:.2f} €  →  /trinken {key}")
-    lines.append("\nKurzform für Bier: /bier [anzahl]")
+        lines.append(f"{info['label']}: {info['price']:.2f} €  →  /{key} [anzahl]")
     await update.message.reply_text("\n".join(lines))
 
 
@@ -170,88 +210,72 @@ async def link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def bier(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Kurzbefehl: /bier [anzahl] – immer Bier à 1.50 €."""
-    user = get_user_by_telegram_id(update.effective_user.id)
-    if user is None:
-        await update.message.reply_text("Nicht verknüpft. Bitte /link <username> nutzen.")
-        return
+    """/bier [anzahl] – 🍺 Bier à 1,50 €"""
+    await _eintragen(update, "bier", context.args)
 
-    amount = 1
-    if context.args:
-        try:
-            amount = int(context.args[0])
-        except ValueError:
-            await update.message.reply_text("Bitte eine ganze Zahl angeben, z. B. /bier 3")
-            return
 
-    if amount <= 0:
-        await update.message.reply_text("Die Anzahl muss größer als 0 sein.")
-        return
+async def radler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/radler [anzahl] – 🍋 Radler à 1,50 €"""
+    await _eintragen(update, "radler", context.args)
 
-    today = date.today().isoformat()
-    price = DRINK_CATALOG["bier"]["price"]
+
+async def cola(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/cola [anzahl] – 🥤 Cola/Fanta/Mezzo à 1,50 €"""
+    await _eintragen(update, "cola", context.args)
+
+
+async def wasser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/wasser [anzahl] – 💧 Wasser à 1,00 €"""
+    await _eintragen(update, "wasser", context.args)
+
+
+async def uebersicht(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Monatsübersicht aller Spieler – wie die Startseite der Web-App."""
+    ms = month_str_today()
     conn = get_conn()
-    conn.execute(
-        "INSERT INTO beers (user_id, drinking_date, amount, drink_type, price_per_unit) VALUES (?, ?, ?, 'bier', ?)",
-        (user["id"], today, amount, price),
-    )
-    conn.commit()
+    rows = conn.execute(
+        """
+        SELECT
+            u.username,
+            COALESCE(SUM(b.amount), 0) AS total_drinks,
+            COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros,
+            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS paid_euros,
+            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS open_euros
+        FROM users u
+        LEFT JOIN beers b
+            ON u.id = b.user_id
+            AND strftime('%Y-%m', b.drinking_date) = ?
+        LEFT JOIN payments p ON p.beer_id = b.id
+        GROUP BY u.id
+        HAVING total_drinks > 0
+        ORDER BY total_euros DESC
+        """,
+        (ms,),
+    ).fetchall()
     conn.close()
 
-    euros = amount * price
-    await update.message.reply_text(
-        f"✅ {amount}× 🍺 Bier für {today} eingetragen.\nKosten: {euros:.2f} €"
-    )
-
-
-async def trinken(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Universalbefehl: /trinken <getränk> [anzahl]\nBeispiel: /trinken radler 2"""
-    user = get_user_by_telegram_id(update.effective_user.id)
-    if user is None:
-        await update.message.reply_text("Nicht verknüpft. Bitte /link <username> nutzen.")
+    if not rows:
+        await update.message.reply_text(f"Noch keine Einträge für {ms}.")
         return
 
-    if not context.args:
-        lines = ["Bitte so verwenden: /trinken <getränk> [anzahl]\n\nVerfügbare Getränke:"]
-        for key, info in DRINK_CATALOG.items():
-            lines.append(f"  {key} – {info['label']} ({info['price']:.2f} €)")
-        await update.message.reply_text("\n".join(lines))
-        return
-
-    drink_key = context.args[0].lower()
-    if drink_key not in DRINK_CATALOG:
-        await update.message.reply_text(
-            f"Unbekanntes Getränk '{drink_key}'.\nVerfügbar: {', '.join(DRINK_CATALOG.keys())}"
+    lines = [f"📊 Monatsübersicht {ms}:\n"]
+    t_drinks = 0
+    t_total = t_paid = t_open = 0.0
+    for r in rows:
+        t_drinks += r["total_drinks"]
+        t_total  += r["total_euros"]
+        t_paid   += r["paid_euros"]
+        t_open   += r["open_euros"]
+        paid_icon = "✅" if r["open_euros"] == 0 else "⚠️"
+        lines.append(
+            f"{paid_icon} {r['username']}: {r['total_drinks']} 🥤 | "
+            f"{r['total_euros']:.2f} € | offen: {r['open_euros']:.2f} €"
         )
-        return
-
-    amount = 1
-    if len(context.args) >= 2:
-        try:
-            amount = int(context.args[1])
-        except ValueError:
-            await update.message.reply_text("Anzahl muss eine ganze Zahl sein.")
-            return
-
-    if amount <= 0:
-        await update.message.reply_text("Die Anzahl muss größer als 0 sein.")
-        return
-
-    today = date.today().isoformat()
-    info = DRINK_CATALOG[drink_key]
-    price = info["price"]
-    conn = get_conn()
-    conn.execute(
-        "INSERT INTO beers (user_id, drinking_date, amount, drink_type, price_per_unit) VALUES (?, ?, ?, ?, ?)",
-        (user["id"], today, amount, drink_key, price),
+    lines.append(
+        f"\n▶ Gesamt: {int(t_drinks)} Getränke | {t_total:.2f} €\n"
+        f"✅ bezahlt: {t_paid:.2f} €  ⚠️ offen: {t_open:.2f} €"
     )
-    conn.commit()
-    conn.close()
-
-    euros = amount * price
-    await update.message.reply_text(
-        f"✅ {amount}× {info['label']} für {today} eingetragen.\nKosten: {euros:.2f} €"
-    )
+    await update.message.reply_text("\n".join(lines))
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -488,8 +512,11 @@ def main() -> None:
     app.add_handler(CommandHandler("help",           help_cmd))
     app.add_handler(CommandHandler("link",           link))
     app.add_handler(CommandHandler("bier",           bier))
-    app.add_handler(CommandHandler("trinken",        trinken))
+    app.add_handler(CommandHandler("radler",         radler))
+    app.add_handler(CommandHandler("cola",           cola))
+    app.add_handler(CommandHandler("wasser",         wasser))
     app.add_handler(CommandHandler("getraenke",      getraenke))
+    app.add_handler(CommandHandler("uebersicht",     uebersicht))
     app.add_handler(CommandHandler("status",         status))
     app.add_handler(CommandHandler("liste",          liste))
     app.add_handler(CommandHandler("admin_liste",    admin_liste))
