@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% set title = t('page.dashboard.title') %}
+{% block content %}
+<div class="row">
+  <div class="col-12 col-md-8 col-lg-6">
+    <h1 class="h3 mb-2">{{ t('dashboard.heading') }}</h1>
+    <p class="text-muted mb-3">{{ t('dashboard.info', price='%.2f'|format(beer_price)) }}</p>
+
+    <div class="card card-body mb-4 shadow-sm text-center">
+      <h2 class="h5 mb-2">Unterstütze die VfB Grötzingen AH</h2>
+      <p class="text-muted mb-3">Direkt hier per PayPal – jetzt bezahlen.</p>
+      <a href="https://www.paypal.com/donate/?business=ah-vfb04@web.de&currency_code=EUR"
+         class="btn btn-primary px-4"
+         target="_blank" rel="noopener noreferrer">
+        Jetzt bezahlen
+      </a>
+    </div>
+
+    <form method="post" class="card card-body mb-4 shadow-sm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label for="drinking_date" class="form-label">{{ t('form.date') }}</label>
+        <input type="date" class="form-control" id="drinking_date" name="drinking_date" value="{{ today.isoformat() }}" required>
+      </div>
+      <div class="mb-3">
+        <label for="drink_type" class="form-label">{{ t('table.drink') }}</label>
+        <select class="form-select" id="drink_type" name="drink_type">
+          {% for d in drink_catalog %}
+          <option value="{{ d.key }}">{{ d.label }} – {{ '%.2f'|format(d.price) }} €</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="amount" class="form-label">{{ t('form.beer_count') }}</label>
+        <input type="number" class="form-control" id="amount" name="amount" min="1" step="1" required>
+      </div>
+      <button type="submit" class="btn btn-primary">{{ t('dashboard.save_entry') }}</button>
+    </form>
+  </div>
+</div>
+
+<h2 class="h5 mb-3">{{ t('dashboard.recent_entries', username=user.username) }}</h2>
+{% if entries %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead>
+      <tr>
+        <th>{{ t('table.date') }}</th>
+        <th>{{ t('table.drink') }}</th>
+        <th>{{ t('table.beers') }}</th>
+        <th>{{ t('table.amount_euro') }}</th>
+        <th>{{ t('table.recorded_at') }}</th>
+        <th>{{ t('table.paid') }}</th>
+        <th>{{ t('table.payment_method') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td>{{ e.drinking_date }}</td>
+        <td>{{ drink_label.get(e.drink_type, e.drink_type) }}</td>
+        <td>{{ e.amount }}</td>
+        <td>{{ '%.2f'|format(e.amount * e.price_per_unit) }} €</td>
+        <td>{{ e.created_at }}</td>
+        <td>
+          <form method="post" action="{{ url_for('update_payment', entry_id=e.id) }}" class="d-inline payment-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="checkbox" name="is_paid" class="form-check-input" {% if e.is_paid %}checked{% endif %} onchange="this.form.submit()">
+          </form>
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('update_payment', entry_id=e.id) }}" class="d-inline payment-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="is_paid" value="{{ 'on' if e.is_paid else '' }}">
+            <select name="method" class="form-select form-select-sm" onchange="this.form.submit()">
+              <option value="">–</option>
+              <option value="BAR" {% if e.payment_method == 'BAR' %}selected{% endif %}>{{ t('payment.bar') }}</option>
+              <option value="PAYPAL" {% if e.payment_method == 'PAYPAL' %}selected{% endif %}>PayPal</option>
+            </select>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">{{ t('table.no_entries') }}</p>
+{% endif %}
+{% endblock %}
