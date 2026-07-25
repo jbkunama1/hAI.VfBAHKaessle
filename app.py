@@ -95,7 +95,7 @@ TRANSLATIONS = {
     "flash.user_updated": {"de": "User aktualisiert.", "en": "User updated."},
     "flash.delete_admin_forbidden": {"de": "Admins d\u00fcrfen nicht gel\u00f6scht werden.", "en": "Admins cannot be deleted."},
     "flash.delete_self_forbidden": {"de": "Du kannst dich nicht selbst l\u00f6schen.", "en": "You cannot delete yourself."},
-    "flash.user_deleted": {"de": "User \'{username}\' wurde gel\u00f6scht.", "en": "User \'{username}\' was deleted."},
+    "flash.user_deleted": {"de": "User '{username}' wurde gel\u00f6scht.", "en": "User '{username}' was deleted."},
     "flash.entry_not_found": {"de": "Eintrag nicht gefunden.", "en": "Entry not found."},
     "flash.entry_updated": {"de": "Eintrag aktualisiert.", "en": "Entry updated."},
     "flash.entry_deleted": {"de": "Eintrag gel\u00f6scht.", "en": "Entry deleted."},
@@ -123,6 +123,14 @@ TRANSLATIONS = {
     },
     "flash.reset_request_resolved": {"de": "Passwort wurde gesetzt und Anfrage geschlossen.", "en": "Password has been set and request closed."},
     "flash.reset_request_not_found": {"de": "Anfrage nicht gefunden.", "en": "Request not found."},
+    "flash.bulk_pay_done": {
+        "de": "{count} Eintrag/Eintr\u00e4ge f\u00fcr {username} ({ym}) als bezahlt markiert.",
+        "en": "{count} entry/entries for {username} ({ym}) marked as paid.",
+    },
+    "flash.bulk_pay_user_not_found": {
+        "de": "User nicht gefunden oder keine Eintr\u00e4ge f\u00fcr diesen Monat.",
+        "en": "User not found or no entries for this month.",
+    },
     "page.login.title": {"de": "Login", "en": "Login"},
     "page.register.title": {"de": "Registrieren", "en": "Register"},
     "page.about.title": {"de": "\u00dcber uns", "en": "About us"},
@@ -151,7 +159,7 @@ TRANSLATIONS = {
     "register.login_link": {"de": "Zum Login", "en": "Go to login"},
     "register.hint": {
         "de": "Du brauchst keine E-Mail-Adresse. Bitte w\u00e4hle am besten deinen Klarnamen oder einen passenden Spitznamen als Benutzernamen sowie ein freies Passwort. Der Benutzername kann sp\u00e4ter nur vom Admin ge\u00e4ndert werden.",
-        "en": "You don\'t need an email address. Please choose your real name or a suitable nickname as your username, plus a password of your choice. The username can only be changed by an admin later on.",
+        "en": "You don't need an email address. Please choose your real name or a suitable nickname as your username, plus a password of your choice. The username can only be changed by an admin later on.",
     },
     "dashboard.heading": {"de": "Biere eintragen", "en": "Add drinks"},
     "dashboard.info": {
@@ -184,8 +192,13 @@ TRANSLATIONS = {
     "admin.reset_requests": {"de": "Passwort-Anfragen", "en": "Password requests"},
     "admin.reset_requests_empty": {"de": "Keine offenen Passwort-Anfragen.", "en": "No open password requests."},
     "admin.reset_requests_help": {
-        "de": "Diese Nutzer haben \'Passwort vergessen?\' ausgel\u00f6st. Vergib unten ein neues Passwort.",
-        "en": "These users triggered \'Forgot password?\'. Set a new password below.",
+        "de": "Diese Nutzer haben 'Passwort vergessen?' ausgel\u00f6st. Vergib unten ein neues Passwort.",
+        "en": "These users triggered 'Forgot password?'. Set a new password below.",
+    },
+    "admin.bulk_pay_btn": {"de": "Als bezahlt markieren", "en": "Mark as paid"},
+    "admin.bulk_pay_confirm": {
+        "de": "Alle offenen Eintr\u00e4ge von {username} im Monat {ym} als bezahlt markieren?",
+        "en": "Mark all open entries of {username} in month {ym} as paid?",
     },
     "admin_edit_user.heading": {"de": "User bearbeiten", "en": "Edit user"},
     "admin.back_overview": {"de": "\u2190 Zur\u00fcck zur \u00dcbersicht", "en": "\u2190 Back to overview"},
@@ -250,7 +263,7 @@ TRANSLATIONS = {
     "payment.paid": {"de": "bezahlt", "en": "paid"},
     "payment.open": {"de": "offen", "en": "open"},
     "payment.bar": {"de": "Bar", "en": "Cash"},
-    "confirm.delete_user": {"de": "User \'{username}\' wirklich l\u00f6schen?", "en": "Really delete user \'{username}\'?"},
+    "confirm.delete_user": {"de": "User '{username}' wirklich l\u00f6schen?", "en": "Really delete user '{username}'?"},
     "confirm.delete_entry": {"de": "Eintrag wirklich l\u00f6schen?", "en": "Really delete entry?"},
     "profile.heading": {"de": "Mein Profil", "en": "My profile"},
     "profile.subtitle": {"de": "Benutzername: {username} (nur vom Admin \u00e4nderbar)", "en": "Username: {username} (only changeable by admin)"},
@@ -318,7 +331,7 @@ def create_app(test_config=None):
                 user_id INTEGER NOT NULL,
                 drinking_date DATE NOT NULL,
                 amount INTEGER NOT NULL CHECK(amount > 0),
-                drink_type TEXT NOT NULL DEFAULT \'bier\',
+                drink_type TEXT NOT NULL DEFAULT 'bier',
                 price_per_unit REAL NOT NULL DEFAULT 1.50,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id)
@@ -327,7 +340,7 @@ def create_app(test_config=None):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 beer_id INTEGER NOT NULL UNIQUE,
                 is_paid INTEGER NOT NULL DEFAULT 0,
-                method TEXT CHECK(method IN (\'BAR\',\'PAYPAL\') OR method IS NULL),
+                method TEXT CHECK(method IN ('BAR','PAYPAL') OR method IS NULL),
                 marked_by_user_id INTEGER,
                 marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(beer_id) REFERENCES beers(id),
@@ -337,7 +350,7 @@ def create_app(test_config=None):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 username_at_request TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT \'open\',
+                status TEXT NOT NULL DEFAULT 'open',
                 requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 resolved_at TIMESTAMP,
                 resolved_by_user_id INTEGER,
@@ -347,7 +360,7 @@ def create_app(test_config=None):
             """
         )
         try:
-            db.execute("ALTER TABLE beers ADD COLUMN drink_type TEXT NOT NULL DEFAULT \'bier\'")
+            db.execute("ALTER TABLE beers ADD COLUMN drink_type TEXT NOT NULL DEFAULT 'bier'")
         except Exception:
             pass
         try:
@@ -427,7 +440,7 @@ def create_app(test_config=None):
     def open_reset_request_count():
         db = get_db()
         row = db.execute(
-            "SELECT COUNT(*) AS c FROM password_reset_requests WHERE status = \'open\'"
+            "SELECT COUNT(*) AS c FROM password_reset_requests WHERE status = 'open'"
         ).fetchone()
         return row["c"] if row else 0
 
@@ -541,7 +554,7 @@ def create_app(test_config=None):
                    COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS paid_euros,
                    COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS open_euros
             FROM users u
-            LEFT JOIN beers b ON u.id = b.user_id AND strftime(\'%Y-%m\', b.drinking_date) = ?
+            LEFT JOIN beers b ON u.id = b.user_id AND strftime('%Y-%m', b.drinking_date) = ?
             LEFT JOIN payments p ON p.beer_id = b.id
             WHERE u.is_admin = 0
             GROUP BY u.id
@@ -576,12 +589,12 @@ def create_app(test_config=None):
             user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
             if user is not None:
                 existing = db.execute(
-                    "SELECT id FROM password_reset_requests WHERE user_id = ? AND status = \'open\'",
+                    "SELECT id FROM password_reset_requests WHERE user_id = ? AND status = 'open'",
                     (user["id"],),
                 ).fetchone()
                 if not existing:
                     db.execute(
-                        "INSERT INTO password_reset_requests (user_id, username_at_request, status) VALUES (?, ?, \'open\')",
+                        "INSERT INTO password_reset_requests (user_id, username_at_request, status) VALUES (?, ?, 'open')",
                         (user["id"], user["username"]),
                     )
                     db.commit()
@@ -765,7 +778,7 @@ def create_app(test_config=None):
                    COALESCE(SUM(b.amount), 0) AS total_drinks,
                    COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros
             FROM users u
-            LEFT JOIN beers b ON u.id = b.user_id AND strftime(\'%Y-%m\', b.drinking_date) = ?
+            LEFT JOIN beers b ON u.id = b.user_id AND strftime('%Y-%m', b.drinking_date) = ?
             {admin_filter}
             GROUP BY u.id
             ORDER BY u.username
@@ -828,7 +841,7 @@ def create_app(test_config=None):
             SELECT r.id, r.username_at_request, r.requested_at, u.id AS user_id
             FROM password_reset_requests r
             JOIN users u ON u.id = r.user_id
-            WHERE r.status = \'open\'
+            WHERE r.status = 'open'
             ORDER BY r.requested_at ASC
             """
         ).fetchall()
@@ -849,7 +862,7 @@ def create_app(test_config=None):
         db = get_db()
         admin_user = current_user()
         req = db.execute(
-            "SELECT * FROM password_reset_requests WHERE id = ? AND status = \'open\'",
+            "SELECT * FROM password_reset_requests WHERE id = ? AND status = 'open'",
             (request_id,),
         ).fetchone()
 
@@ -867,7 +880,7 @@ def create_app(test_config=None):
             (generate_password_hash(new_password), req["user_id"]),
         )
         db.execute(
-            "UPDATE password_reset_requests SET status = \'resolved\', resolved_at = CURRENT_TIMESTAMP, resolved_by_user_id = ? WHERE id = ?",
+            "UPDATE password_reset_requests SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP, resolved_by_user_id = ? WHERE id = ?",
             (admin_user["id"], request_id),
         )
         db.commit()
@@ -1050,7 +1063,7 @@ def create_app(test_config=None):
             """
             SELECT u.username, b.drinking_date, b.amount, b.drink_type, b.price_per_unit
             FROM beers b JOIN users u ON u.id = b.user_id
-            WHERE strftime(\'%Y-%m\', b.drinking_date) = ?
+            WHERE strftime('%Y-%m', b.drinking_date) = ?
             ORDER BY u.username, b.drinking_date
             """,
             (month_str,),
@@ -1078,7 +1091,7 @@ def create_app(test_config=None):
         db = get_db()
         rows = db.execute(
             """
-            SELECT u.username AS username, strftime(\'%Y-%m\', b.drinking_date) AS ym,
+            SELECT u.username AS username, strftime('%Y-%m', b.drinking_date) AS ym,
                    COALESCE(SUM(b.amount), 0) AS total_drinks,
                    COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros
             FROM users u JOIN beers b ON u.id = b.user_id
@@ -1119,6 +1132,58 @@ def create_app(test_config=None):
             "admin_report_balances.html",
             month_rows=month_rows, users=users, beer_price=app.config["BEER_PRICE"],
         )
+
+    @app.route("/admin/bulk-pay", methods=["POST"])
+    @login_required
+    @admin_required
+    def admin_bulk_pay():
+        db = get_db()
+        admin_user = current_user()
+        username = request.form.get("username", "").strip()
+        ym = request.form.get("ym", "").strip()
+        method = request.form.get("method", "").strip()
+
+        if method not in ("BAR", "PAYPAL"):
+            flash_i18n("flash.payment_method_required", "danger")
+            return redirect(url_for("admin_report_balances"))
+
+        target_user = db.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+        if target_user is None:
+            flash_i18n("flash.bulk_pay_user_not_found", "warning")
+            return redirect(url_for("admin_report_balances"))
+
+        beer_ids = db.execute(
+            """
+            SELECT b.id FROM beers b
+            LEFT JOIN payments p ON p.beer_id = b.id
+            WHERE b.user_id = ?
+              AND strftime('%Y-%m', b.drinking_date) = ?
+              AND COALESCE(p.is_paid, 0) = 0
+            """,
+            (target_user["id"], ym),
+        ).fetchall()
+
+        if not beer_ids:
+            flash_i18n("flash.bulk_pay_user_not_found", "warning")
+            return redirect(url_for("admin_report_balances"))
+
+        for row in beer_ids:
+            db.execute(
+                """
+                INSERT INTO payments (beer_id, is_paid, method, marked_by_user_id)
+                VALUES (?, 1, ?, ?)
+                ON CONFLICT(beer_id) DO UPDATE SET
+                    is_paid = 1,
+                    method = excluded.method,
+                    marked_by_user_id = excluded.marked_by_user_id,
+                    marked_at = CURRENT_TIMESTAMP
+                """,
+                (row["id"], method, admin_user["id"]),
+            )
+        db.commit()
+
+        flash_i18n("flash.bulk_pay_done", "success", count=len(beer_ids), username=username, ym=ym)
+        return redirect(url_for("admin_report_balances"))
 
     @app.route("/entry/<int:entry_id>/payment", methods=["POST"])
     @login_required
