@@ -14,6 +14,7 @@
             <th>{{ t('table.player') }}</th>
             <th>{{ t('table.beers') }}</th>
             <th>{{ t('table.amount_euro') }}</th>
+            <th>{{ t('table.payment') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -22,12 +23,32 @@
             <td>{{ row.username }}</td>
             <td>{{ row.beers }}</td>
             <td>{{ '%.2f'|format(row.euros) }}</td>
+            <td>
+                {% if row.beers > 0 %}
+                <form method="post" action="{{ url_for('admin_bulk_pay') }}" class="d-flex gap-1 align-items-center">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="username" value="{{ row.username }}">
+                    <input type="hidden" name="ym" value="{{ month.ym }}">
+                    <select name="method" class="form-select form-select-sm" style="width:auto" required>
+                        <option value="BAR">{{ t('payment.bar') }}</option>
+                        <option value="PAYPAL">PayPal</option>
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-success"
+                        onclick="return confirm('{{ t('admin.bulk_pay_confirm', username=row.username, ym=month.ym) }}')">
+                        ✔ {{ t('admin.bulk_pay_btn') }}
+                    </button>
+                </form>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
         <tr class="fw-bold">
             <td>{{ t('table.total_row') }}</td>
             <td>{{ month.total_beers }}</td>
             <td>{{ '%.2f'|format(month.total_euros) }}</td>
+            <td></td>
         </tr>
     </tbody>
 </table>
