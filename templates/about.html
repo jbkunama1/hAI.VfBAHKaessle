@@ -1,20 +1,7 @@
 {% extends 'base.html' %}
 {% set title = t('page.about.title') %}
-{% block body_class %}page-about{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-12 col-lg-8">
-    <div class="card shadow-sm about-card">
-      <div class="card-body text-center text-lg-start">
-        <div class="d-flex flex-column flex-lg-row align-items-center gap-3">
-          <img class="about-logo" src="{{ url_for('static', filename='VfB_Logo_II.jpg') }}" alt="VfB Grötzingen Logo" width="88" height="88">
-          <div>
-            <h1 class="h4 mb-3 about-hero-title">{{ t('about.heading') }}</h1>
-            <p class="mb-0">{{ t('about.text') }}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+<img src="{{ url_for('static', filename='VfB_Logo_II.jpg') }}" alt="VfB Grötzingen Logo" class="img-fluid mb-3" style="max-width:300px;">
+<h1>{{ t('about.heading') }}</h1>
+<p>{{ t('about.text') }}</p>
 {% endblock %}

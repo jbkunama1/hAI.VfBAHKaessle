@@ -1,179 +1,162 @@
 {% extends 'base.html' %}
 {% set title = t('page.admin.title') %}
 {% block content %}
-<div class="admin-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-  <div>
-    <h1 class="admin-title mb-1">{{ t('admin.heading') }}</h1>
-    <p class="admin-subtitle mb-0">{{ t('admin.subtitle') }}</p>
-  </div>
-  <a href="{{ url_for('admin_report_balances') }}" class="btn btn-outline-light btn-sm">
-    📊 {{ t('admin.balance_report') }}
-  </a>
+<h1>{{ t('admin.heading') }}</h1>
+<p class="text-muted">{{ t('admin.subtitle') }}</p>
+
+<p><a href="{{ url_for('admin_report_balances') }}" class="btn btn-outline-secondary btn-sm">{{ t('admin.balance_report') }}</a></p>
+
+{% set visible_users = users_stats | rejectattr('is_admin') | list %}
+{% set admin_users = users_stats | selectattr('is_admin') | list %}
+
+<div class="row mb-4">
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>{{ t('admin.stats.users') }}</h6><p class="fs-4">{{ visible_users | length }}</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>{{ t('admin.stats.admins') }}</h6><p class="fs-4">{{ admin_users | length }}</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>{{ t('admin.stats.drinks_total') }}</h6><p class="fs-4">{{ users_stats | sum(attribute='beers') }}</p></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><h6>{{ t('admin.stats.latest_entries') }}</h6><p class="fs-4">{{ recent_entries | length }}</p></div></div></div>
 </div>
 
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
-    <div class="stat-card">
-      <div class="stat-label">{{ t('admin.stats.users') }}</div>
-      <div class="stat-value">{{ users_stats|length }}</div>
+{% if reset_requests %}
+<div class="card mb-4 border-warning">
+    <div class="card-body">
+        <h2 class="h5">{{ t('admin.reset_requests') }} <span class="badge bg-danger">{{ reset_requests | length }}</span></h2>
+        <p class="text-muted">{{ t('admin.reset_requests_help') }}</p>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>{{ t('form.username') }}</th>
+                    <th>{{ t('table.requested_at') }}</th>
+                    <th>{{ t('form.new_password') }}</th>
+                    <th>{{ t('table.actions') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reset_requests %}
+                <tr>
+                    <td>{{ r.username_at_request }}</td>
+                    <td>{{ r.requested_at }}</td>
+                    <td colspan="2">
+                        <form method="post" action="{{ url_for('admin_resolve_reset_request', request_id=r.id) }}" class="d-flex gap-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="password" name="new_password" class="form-control form-control-sm" placeholder="{{ t('form.new_password') }}" required>
+                            <button type="submit" class="btn btn-sm btn-primary text-nowrap">{{ t('action.set_new_password') }}</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="stat-card">
-      <div class="stat-label">{{ t('admin.stats.admins') }}</div>
-      <div class="stat-value">{{ users_stats|selectattr('is_admin')|list|length }}</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="stat-card">
-      <div class="stat-label">{{ t('admin.stats.drinks_total') }}</div>
-      <div class="stat-value">{{ users_stats|sum(attribute='beers') }}</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="stat-card">
-      <div class="stat-label">{{ t('admin.stats.latest_entries') }}</div>
-      <div class="stat-value">{{ recent_entries|length }}</div>
-    </div>
-  </div>
 </div>
+{% else %}
+<p class="text-muted">{{ t('admin.reset_requests_empty') }}</p>
+{% endif %}
 
-<div class="card mb-4">
-  <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2 class="section-title mb-0">{{ t('admin.user_management') }}</h2>
-    </div>
-    <div class="table-responsive">
-      <table class="table table-hover align-middle admin-table mb-0">
-        <thead>
-          <tr>
-            <th>{{ t('table.player') }}</th>
-            <th>{{ t('table.drinks') }}</th>
-            <th>{{ t('table.total_euro') }}</th>
-            <th>{{ t('table.last_date') }}</th>
+<h2 class="h5">{{ t('admin.user_management') }}</h2>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>{{ t('form.username') }}</th>
             <th>{{ t('table.role') }}</th>
-            <th class="text-end">{{ t('table.actions') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for u in users_stats %}
-          <tr>
-            <td class="fw-semibold">{{ u.username }}</td>
+            <th>{{ t('table.beers') }}</th>
+            <th>{{ t('table.last_date') }}</th>
+            <th>{{ t('form.telegram_id') }}</th>
+            <th>{{ t('table.actions') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for u in visible_users %}
+        <tr>
+            <td>{{ u.username }}</td>
+            <td>{{ t('role.user') }}</td>
             <td>{{ u.beers }}</td>
-            <td>{{ '%.2f'|format((u.beers or 0) * beer_price) }}</td>
             <td>{{ u.last_date or '–' }}</td>
+            <td>{{ u.telegram_id or '–' }}</td>
             <td>
-              {% if u.is_admin %}
-                <span class="badge badge-admin">{{ t('role.admin') }}</span>
-              {% else %}
-                <span class="badge badge-user">{{ t('role.user') }}</span>
-              {% endif %}
-            </td>
-            <td class="text-end">
-              <div class="d-inline-flex gap-2">
-                <a href="{{ url_for('admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-info">{{ t('action.edit') }}</a>
-                {% if not u.is_admin %}
-                <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" class="d-inline"
-                      onsubmit="return confirm({{ t('confirm.delete_user', username=u.username)|tojson }});">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="btn btn-sm btn-outline-danger">{{ t('action.delete') }}</button>
+                <a href="{{ url_for('admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-primary">{{ t('action.edit') }}</a>
+                <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" class="d-inline" onsubmit="return confirm('{{ t('confirm.delete_user', username=u.username) }}');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ t('action.delete') }}</button>
                 </form>
-                {% endif %}
-              </div>
             </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if admin_users %}
+<h2 class="h5 mt-4">{{ t('role.admin') }}</h2>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>{{ t('form.username') }}</th>
+            <th>{{ t('table.role') }}</th>
+            <th>{{ t('table.beers') }}</th>
+            <th>{{ t('table.last_date') }}</th>
+            <th>{{ t('form.telegram_id') }}</th>
+            <th>{{ t('table.actions') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for u in admin_users %}
+        <tr>
+            <td>{{ u.username }}</td>
+            <td>{{ t('role.admin') }}</td>
+            <td>{{ u.beers }}</td>
+            <td>{{ u.last_date or '–' }}</td>
+            <td>{{ u.telegram_id or '–' }}</td>
+            <td>
+                <a href="{{ url_for('admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-primary">{{ t('action.edit') }}</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<h2 class="h5 mt-4">{{ t('admin.export') }}</h2>
+<form method="get" action="{{ url_for('admin_export_month') }}" class="row g-2 align-items-end mb-2">
+    <div class="col-auto">
+        <input type="number" name="year" class="form-control form-control-sm" placeholder="{{ t('form.year') }}">
     </div>
-  </div>
-</div>
+    <div class="col-auto">
+        <input type="number" name="month" min="1" max="12" class="form-control form-control-sm" placeholder="{{ t('form.month') }}">
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">{{ t('admin.export_csv') }}</button>
+    </div>
+</form>
+<p class="text-muted small">{{ t('admin.export_help') }}</p>
 
-<div class="card mb-4">
-  <div class="card-body">
-    <h2 class="section-title mb-3">{{ t('admin.export') }}</h2>
-    <form method="get" action="{{ url_for('admin_export_month') }}" class="row g-2 align-items-end">
-      <div class="col-auto">
-        <label class="form-label small text-uppercase text-muted mb-1" for="month">{{ t('form.month') }}</label>
-        <select id="month" name="month" class="form-select form-select-sm">
-          {% for m in range(1, 13) %}
-          <option value="{{ m }}">{{ '%02d'|format(m) }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-auto">
-        <label class="form-label small text-uppercase text-muted mb-1" for="year">{{ t('form.year') }}</label>
-        <input id="year" name="year" type="number" class="form-control form-control-sm" value="2026">
-      </div>
-      <div class="col-auto">
-        <button type="submit" class="btn btn-primary btn-sm">{{ t('admin.export_csv') }}</button>
-      </div>
-      <div class="col-12">
-        <p class="text-muted small mb-0 mt-1">{{ t('admin.export_help') }}</p>
-      </div>
-    </form>
-  </div>
-</div>
-
-<div class="card">
-  <div class="card-body">
-    <h2 class="section-title mb-3">{{ t('admin.latest_entries_global') }}</h2>
-    {% if recent_entries %}
-    <div class="table-responsive">
-      <table class="table table-hover align-middle admin-table mb-0">
-        <thead>
-          <tr>
+<h2 class="h5 mt-4">{{ t('admin.latest_entries_global') }}</h2>
+<table class="table table-striped">
+    <thead>
+        <tr>
             <th>{{ t('table.player') }}</th>
             <th>{{ t('table.date') }}</th>
             <th>{{ t('table.drink') }}</th>
             <th>{{ t('table.amount') }}</th>
-            <th>{{ t('table.recorded_at') }}</th>
             <th>{{ t('table.payment') }}</th>
-            <th class="text-end">{{ t('table.actions') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for e in recent_entries %}
-          <tr>
-            <td class="fw-semibold">{{ e.username }}</td>
+            <th>{{ t('table.actions') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for e in recent_entries %}
+        <tr>
+            <td>{{ e.username }}</td>
             <td>{{ e.drinking_date }}</td>
             <td>{{ drink_label.get(e.drink_type, e.drink_type) }}</td>
             <td>{{ e.amount }}</td>
-            <td>{{ e.created_at }}</td>
+            <td>{{ t('payment.paid') if e.is_paid else t('payment.open') }}</td>
             <td>
-              <form method="post" action="{{ url_for('update_payment', entry_id=e.id) }}" class="d-flex align-items-center gap-2 payment-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="checkbox" name="is_paid" class="form-check-input" {% if e.is_paid %}checked{% endif %} onchange="this.form.submit()">
-                {% if e.is_paid %}
-                  <span class="badge badge-paid">{{ t('payment.paid') }}</span>
-                {% else %}
-                  <span class="badge badge-open">{{ t('payment.open') }}</span>
-                {% endif %}
-                <select name="method" class="form-select form-select-sm" onchange="this.form.submit()">
-                  <option value="">–</option>
-                  <option value="BAR" {% if e.payment_method == 'BAR' %}selected{% endif %}>{{ t('payment.bar') }}</option>
-                  <option value="PAYPAL" {% if e.payment_method == 'PAYPAL' %}selected{% endif %}>PayPal</option>
-                </select>
-              </form>
-            </td>
-            <td class="text-end">
-              <div class="d-inline-flex gap-2">
-                <a href="{{ url_for('admin_edit_entry', entry_id=e.id) }}" class="btn btn-sm btn-outline-info">{{ t('action.change') }}</a>
-                <form method="post" action="{{ url_for('admin_delete_entry', entry_id=e.id) }}" class="d-inline"
-                      onsubmit="return confirm({{ t('confirm.delete_entry')|tojson }});">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="btn btn-sm btn-outline-danger">{{ t('action.delete') }}</button>
+                <a href="{{ url_for('admin_edit_entry', entry_id=e.id) }}" class="btn btn-sm btn-outline-primary">{{ t('action.edit') }}</a>
+                <form method="post" action="{{ url_for('admin_delete_entry', entry_id=e.id) }}" class="d-inline" onsubmit="return confirm('{{ t('confirm.delete_entry') }}');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ t('action.delete') }}</button>
                 </form>
-              </div>
             </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p class="text-muted mb-0">{{ t('table.no_entries') }}</p>
-    {% endif %}
-  </div>
-</div>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 {% endblock %}

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% set title = t('page.profile.title') %}
+{% block content %}
+<h1>{{ t('profile.heading') }}</h1>
+<p class="text-muted">{{ t('profile.subtitle', username=user.username) }}</p>
+
+<div class="row g-4 mt-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title h5">{{ t('profile.optional_data') }}</h2>
+                <form method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="form_type" value="contact_data">
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">{{ t('form.phone') }} ({{ t('form.optional') }})</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" value="{{ user.phone or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">{{ t('form.email') }} ({{ t('form.optional') }})</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="birthday" class="form-label">{{ t('form.birthday') }} ({{ t('form.optional') }})</label>
+                        <input type="date" class="form-control" id="birthday" name="birthday" value="{{ user.birthday or '' }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">{{ t('action.save') }}</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title h5">{{ t('profile.change_password') }}</h2>
+                <form method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="form_type" value="change_password">
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label">{{ t('form.current_password') }}</label>
+                        <input type="password" class="form-control" id="current_password" name="current_password" required autocomplete="current-password">
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">{{ t('form.new_password') }}</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" required autocomplete="new-password">
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password_repeat" class="form-label">{{ t('form.new_password_repeat') }}</label>
+                        <input type="password" class="form-control" id="new_password_repeat" name="new_password_repeat" required autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">{{ t('action.change') }}</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

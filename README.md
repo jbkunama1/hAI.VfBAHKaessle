@@ -1,21 +1,14 @@
 # hAI.VfBAHKaessle – VfB Grötzingen AH Bierkässle
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/jbkunama1/hAI.VfBAHKaessle/main/VfB_Logo_II.jpg" alt="VfB Grötzingen AH" height="160">
-</p>
+![VfB Grötzingen AH](https://img.shields.io/badge/VfB-Grötzingen%20AH-blue)
 
-<p align="center">
-  <a href="https://github.com/jbkunama1/hAI.VfBAHKaessle"><img src="https://img.shields.io/github/stars/jbkunama1/hAI.VfBAHKaessle?style=flat-square" alt="GitHub stars"></a>
-  <a href="https://github.com/jbkunama1/hAI.VfBAHKaessle/actions"><img src="https://img.shields.io/github/actions/workflow/status/jbkunama1/hAI.VfBAHKaessle/trufflehog.yml?style=flat-square&label=trufflehog" alt="TruffleHog scan"></a>
-  <a href="https://github.com/jbkunama1/hAI.VfBAHKaessle/blob/main/LICENSE"><img src="https://img.shields.io/github/license/jbkunama1/hAI.VfBAHKaessle?style=flat-square" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square" alt="Python 3.10+">
-  <img src="https://img.shields.io/badge/docker-ready-brightgreen?style=flat-square" alt="Docker ready">
-</p>
+[![GitHub stars](https://img.shields.io/github/stars/jbkunama1/hAI.VfBAHKaessle)](https://github.com/jbkunama1/hAI.VfBAHKaessle)
+[![TruffleHog scan](https://img.shields.io/badge/security-TruffleHog-blue)](https://github.com/jbkunama1/hAI.VfBAHKaessle/actions)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/jbkunama1/hAI.VfBAHKaessle/blob/main/LICENSE)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+![Docker ready](https://img.shields.io/badge/docker-ready-blue)
 
-Flask-Webapp mit SQLite-Backend für das AH-Bierkässle des VfB Grötzingen, inklusive Telegram-Bot
-und einer kleinen GitHub-Pages-Startseite (`index.html`).
-
-Lizenz: MIT (siehe `LICENSE`).
+Flask-Webapp mit SQLite-Backend für das AH-Bierkässle des VfB Grötzingen, inklusive Telegram-Bot und einer kleinen GitHub-Pages-Startseite (`index.html`). Lizenz: MIT (siehe `LICENSE`).
 
 ## Architektur
 
@@ -29,6 +22,7 @@ Lizenz: MIT (siehe `LICENSE`).
   - Tabellen:
     - `users` (inkl. `telegram_id` zur Verknüpfung mit Telegram)
     - `beers` (Einträge: User, Datum, Anzahl, Zeitstempel)
+    - `password_reset_requests` (interne Passwort-Vergessen-Anfragen für den Admin)
 - **Telegram-Bot** (`telegram_bot.py`)
   - Greift auf dieselbe SQLite-Datenbank zu
   - Kommandos für Biereintrag und Monatsstatus
@@ -42,7 +36,7 @@ Lizenz: MIT (siehe `LICENSE`).
 
 1. Repo klonen:
    ```bash
-   git clone <DEIN-REPO-URL> hAI.VfBAHKaessle
+   git clone hAI.VfBAHKaessle
    cd hAI.VfBAHKaessle
    ```
 2. Optional GitHub Pages aktivieren:
@@ -53,12 +47,14 @@ Lizenz: MIT (siehe `LICENSE`).
 ## Features im Detail
 
 - Registrierung und Login für Spieler
+- **Hilfetext bei der Registrierung**: Es ist keine E-Mail-Adresse nötig – Nutzer wählen einen Klarnamen oder passenden Spitznamen als Benutzername sowie ein frei wählbares Passwort
 - Biereinträge pro Datum (z. B. immer mittwochs nach dem Training)
 - Preis pro Bier konfigurierbar über `BEER_PRICE` (Standard: 1.50 €)
 - **Pro Eintrag ein Bezahlt-Status mit Zahlart (Bar/PayPal)**
   - Spieler sehen bei ihren Einträgen sofort, was noch offen und was schon bezahlt ist
   - Admins können den Status für alle Spieler setzen oder korrigieren
 - Monatsübersicht pro Spieler sowie Gesamtübersicht
+- **„Passwort vergessen?“-Funktion**: Statt Mail-Versand wird eine interne Anfrage an den Admin erzeugt, die dieser im Admin-Panel sieht und mit einem neu gesetzten Passwort beantwortet
 - Mobil-taugliche UI (Bootstrap 5, dunkles Theme)
 - Telegram-Bot zur schnellen Erfassung direkt aus Telegram
 
@@ -67,9 +63,8 @@ Lizenz: MIT (siehe `LICENSE`).
 Voraussetzungen: Python 3.10+
 
 ```bash
-git clone <DEIN-REPO-URL> hAI.VfBAHKaessle
+git clone hAI.VfBAHKaessle
 cd hAI.VfBAHKaessle
-
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
@@ -79,18 +74,18 @@ pip install -r requirements.txt
 
 ```bash
 export SECRET_KEY="change-me"      # in Produktion durch sicheren Key ersetzen
-export BEER_PRICE="1.50"          # Preis pro Bier in Euro
-export PORT="1904"                # Port für die Web-App
+export BEER_PRICE="1.50"           # Preis pro Bier in Euro
+export ADMIN_USERNAMES="admin"     # kommagetrennte Liste der Admin-Benutzernamen
+export PORT="1904"                 # Port für die Web-App
 python app.py
 ```
 
-Danach im Browser: <http://localhost:1904>
+Danach im Browser: `http://localhost:1904`
 
 ### Telegram-Bot starten
 
 1. Bei `@BotFather` einen Bot anlegen und `TELEGRAM_BOT_TOKEN` notieren.
 2. Im Projektordner:
-
    ```bash
    export TELEGRAM_BOT_TOKEN="DEIN_TELEGRAM_BOT_TOKEN"
    export BEER_PRICE="1.50"
@@ -104,8 +99,8 @@ Die Web-App und der Bot verwenden beide die SQLite-Datenbank im Ordner `instance
 **Voraussetzung:** Die Web-App läuft bereits, Spieler haben einen Web-Account (Benutzername).
 
 1. **Web-Account anlegen**
-   - Im Browser `http://<host>:1904` öffnen
-   - Benutzer registrieren (Benutzername + Passwort)
+   - Im Browser `http://<server>:1904` öffnen
+   - Benutzer registrieren (Benutzername + Passwort – keine E-Mail-Adresse nötig)
 2. **Telegram-Bot starten**
    - Im Telegram-Client den Bot (z. B. `@dein_ah_bierkaessle_bot`) öffnen
    - `/start` eingeben
@@ -140,8 +135,7 @@ docker build -t haivfbahkaessle:latest .
 ### Stack mit docker-compose
 
 ```bash
-docker compose up -d
-# oder: docker-compose up -d
+docker compose up -d   # oder: docker-compose up -d
 ```
 
 `docker-compose.yml` definiert zwei Services:
@@ -156,6 +150,7 @@ services:
     environment:
       - SECRET_KEY=change-me
       - BEER_PRICE=1.50
+      - ADMIN_USERNAMES=admin
     volumes:
       - bierkaessle_data:/app/instance
     restart: unless-stopped
@@ -177,14 +172,14 @@ volumes:
   bierkaessle_data:
 ```
 
-- Web-App: <http://localhost:1904>
+- Web-App: erreichbar auf Port 1904
 - Datenbank: Volume `bierkaessle_data` (enthält `instance/bierkaessle.sqlite3`)
 
 ### Einsatz in Portainer
 
 1. In Portainer unter **Stacks → Add stack** gehen.
 2. Inhalt der `docker-compose.yml` einfügen.
-3. Im Service `bierkaessle_bot` die Umgebungvariable `TELEGRAM_BOT_TOKEN` auf deinen echten Bot-Token setzen.
+3. Im Service `bierkaessle_bot` die Umgebungsvariable `TELEGRAM_BOT_TOKEN` auf deinen echten Bot-Token setzen.
 4. Stack deployen.
 
 ## Sicherheit / Betrieb
@@ -193,16 +188,19 @@ volumes:
 - Zugriff auf die Web-App über einen Reverse Proxy (nginx, Traefik, Cloudflare Tunnel) absichern.
 - Volume `bierkaessle_data` regelmäßig sichern (Backups).
 - Telegram-Bot-Token niemals ins Repo commiten, sondern nur als ENV/Secret hinterlegen.
+- Passwort-Reset läuft bewusst **ohne E-Mail-Versand** – Anfragen werden intern gespeichert und ausschließlich vom Admin im Panel bearbeitet.
 
 ## Admin-Funktionen
 
 Für Admins (erster registrierter User oder über `ADMIN_USERNAMES` konfiguriert) steht ein eigener Bereich zur Verfügung:
 
 - Überblick über alle Nutzer (Biere, Euro, letztes Datum, Rolle)
+- **Der Account `admin` selbst erscheint nicht in der normalen Nutzerübersicht** – er ist ausschließlich im Admin-Panel sichtbar, da er nur zur Verwaltung dient
+- **Passwort-Vergessen-Anfragen**: Nutzer, die „Passwort vergessen?“ nutzen, erzeugen eine interne Anfrage, die im Admin-Panel mit einem Badge (Anzahl offener Anfragen) angezeigt wird. Der Admin trägt dort direkt ein neues Passwort ein und setzt es für den betroffenen Account
 - Liste der letzten Einträge aller Spieler (global)
 - Einträge bearbeiten (Datum und Anzahl ändern)
 - Einträge löschen (z. B. bei Fehlbuchungen)
 - Einträge als bezahlt markieren, inkl. Zahlart (Bar/PayPal)
 - CSV-Export aller Einträge eines Monats: `username, date, amount`
 
-Zugriff auf das Admin-Panel erfolgt über den Link **„Admin"** in der Navigation.
+Zugriff auf das Admin-Panel erfolgt über den Link **„Admin“** in der Navigation (nur sichtbar für Admin-Accounts).

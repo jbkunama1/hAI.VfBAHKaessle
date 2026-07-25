@@ -1,77 +1,57 @@
 {% extends 'base.html' %}
 {% set title = t('page.login.title') %}
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-12 col-md-6 col-lg-4">
-    <h1 class="h3 mb-3 text-center">{{ t('login.heading') }}</h1>
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <form method="post" novalidate>
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="mb-3">
-            <label for="username" class="form-label">{{ t('form.username') }}</label>
-            <input type="text" class="form-control" id="username" name="username" required autocomplete="username">
-          </div>
-          <div class="mb-3">
-            <label for="password" class="form-label">{{ t('form.password') }}</label>
-            <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password">
-          </div>
-          <button type="submit" class="btn btn-primary w-100">{{ t('login.submit') }}</button>
-        </form>
-        <p class="mt-3 small text-center mb-0">{{ t('login.no_account') }}
-          <a href="{{ url_for('register') }}">{{ t('login.register_link') }}</a>
-        </p>
-      </div>
+<h1>{{ t('login.heading') }}</h1>
+
+<form method="post" class="mt-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="username" class="form-label">{{ t('form.username') }}</label>
+        <input type="text" class="form-control" id="username" name="username" required autocomplete="username">
     </div>
-  </div>
-</div>
+    <div class="mb-3">
+        <label for="password" class="form-label">{{ t('form.password') }}</label>
+        <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password">
+    </div>
+    <button type="submit" class="btn btn-primary">{{ t('login.submit') }}</button>
+</form>
+
+<p class="mt-3">
+    {{ t('login.no_account') }} <a href="{{ url_for('register') }}">{{ t('login.register_link') }}</a>
+    &middot;
+    <a href="{{ url_for('forgot_password') }}">{{ t('login.forgot_password_link') }}</a>
+</p>
 
 {% if monthly_summary %}
-<div class="row justify-content-center mt-4">
-  <div class="col-12 col-md-8 col-lg-6">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h2 class="h6 mb-3 text-muted">&#x1F37A; {{ t('login.monthly_status', month=month_label) }}</h2>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0 small">
-            <thead>
-              <tr>
-                <th>{{ t('table.player') }}</th>
-                <th class="text-end">{{ t('table.beers') }}</th>
-                <th class="text-end">{{ t('table.total') }}</th>
-                <th class="text-end text-success">{{ t('table.paid') }}</th>
-                <th class="text-end text-warning">{{ t('table.open') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in monthly_summary %}
-              <tr>
-                <td>{{ row.username }}</td>
-                <td class="text-end">{{ row.beers }}</td>
-                <td class="text-end">{{ '%.2f'|format(row.total) }} €</td>
-                <td class="text-end {% if row.paid > 0 %}text-success{% else %}text-muted{% endif %}">
-                  {{ '%.2f'|format(row.paid) }} €
-                </td>
-                <td class="text-end {% if row.open > 0 %}text-warning fw-semibold{% else %}text-muted{% endif %}">
-                  {{ '%.2f'|format(row.open) }} €
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-            <tfoot class="table-group-divider">
-              <tr class="fw-semibold">
-                <td>{{ t('table.total_row') }}</td>
-                <td class="text-end">{{ monthly_summary | sum(attribute='beers') }}</td>
-                <td class="text-end">{{ '%.2f'|format(monthly_summary | sum(attribute='total')) }} €</td>
-                <td class="text-end text-success">{{ '%.2f'|format(monthly_summary | sum(attribute='paid')) }} €</td>
-                <td class="text-end text-warning">{{ '%.2f'|format(monthly_summary | sum(attribute='open')) }} €</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+<h2 class="mt-4">🍺 {{ t('login.monthly_status', month=month_label) }}</h2>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>{{ t('table.player') }}</th>
+            <th>{{ t('table.beers') }}</th>
+            <th>{{ t('table.total') }}</th>
+            <th>{{ t('table.paid') }}</th>
+            <th>{{ t('table.open') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in monthly_summary %}
+        <tr>
+            <td>{{ row.username }}</td>
+            <td>{{ row.beers }}</td>
+            <td>{{ '%.2f'|format(row.total) }} €</td>
+            <td>{{ '%.2f'|format(row.paid) }} €</td>
+            <td>{{ '%.2f'|format(row.open) }} €</td>
+        </tr>
+        {% endfor %}
+        <tr class="fw-bold">
+            <td>{{ t('table.total_row') }}</td>
+            <td>{{ monthly_summary | sum(attribute='beers') }}</td>
+            <td>{{ '%.2f'|format(monthly_summary | sum(attribute='total')) }} €</td>
+            <td>{{ '%.2f'|format(monthly_summary | sum(attribute='paid')) }} €</td>
+            <td>{{ '%.2f'|format(monthly_summary | sum(attribute='open')) }} €</td>
+        </tr>
+    </tbody>
+</table>
 {% endif %}
 {% endblock %}
