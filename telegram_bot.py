@@ -2,8 +2,13 @@ import os
 import sqlite3
 from datetime import date
 
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+)
 
 
 DB_PATH = os.path.join(os.getcwd(), "instance", "bierkaessle.sqlite3")
@@ -98,6 +103,20 @@ def month_str_today() -> str:
 
 # ──────────────────────────── Hilfsfunktion Eintrag ────────────────────────────
 
+def _book(user, drink_key: str, amount: int):
+    """Legt den DB-Eintrag an und liefert (info, today) zurück."""
+    info = DRINK_CATALOG[drink_key]
+    today = date.today().isoformat()
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO beers (user_id, drinking_date, amount, drink_type, price_per_unit) VALUES (?, ?, ?, ?, ?)",
+        (user["id"], today, amount, drink_key, info["price"]),
+    )
+    conn.commit()
+    conn.close()
+    return info, today
+
+
 async def _eintragen(update: Update, drink_key: str, args) -> None:
     """Gemeinsame Logik für alle Direktbefehle (/bier, /radler, /cola, /wasser)."""
     user = get_user_by_telegram_id(update.effective_user.id)
@@ -120,21 +139,130 @@ async def _eintragen(update: Update, drink_key: str, args) -> None:
         await update.message.reply_text("Die Anzahl muss größer als 0 sein.")
         return
 
-    today = date.today().isoformat()
-    info = DRINK_CATALOG[drink_key]
-    price = info["price"]
-    conn = get_conn()
-    conn.execute(
-        "INSERT INTO beers (user_id, drinking_date, amount, drink_type, price_per_unit) VALUES (?, ?, ?, ?, ?)",
-        (user["id"], today, amount, drink_key, price),
-    )
-    conn.commit()
-    conn.close()
+    info, today = _book(user, drink_key, amount)
 
-    euros = amount * price
+    euros = amount * info["price"]
     await update.message.reply_text(
         f"✅ {amount}× {info['label']} für {today} eingetragen.\nKosten: {euros:.2f} €"
     )
+
+
+# ──────────────────────────── Report-Helfer ────────────────────────────
+
+def _query_month_overview(ms: str):
+    """Zeilen für die Monatsübersicht aller Spieler."""
+    conn = get_conn()
+    rows = conn.execute(
+        """
+        SELECT
+            u.username,
+            COALESCE(SUM(b.amount), 0) AS total_drinks,
+            COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros,
+            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS paid_euros,
+            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS open_euros
+        FROM users u
+        LEFT JOIN beers b
+            ON u.id = b.user_id
+            AND strftime('%Y-%m', b.drinking_date) = ?
+        LEFT JOIN payments p ON p.beer_id = b.id
+        GROUP BY u.id
+        HAVING total_drinks > 0
+        ORDER BY total_euros DESC
+        """,
+        (ms,),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def _format_overview(rows, ms: str) -> str:
+    if not rows:
+        return f"Noch keine Einträge für {ms}."
+
+    lines = [f"📊 Monatsübersicht {ms}:\n"]
+    t_drinks = 0
+    t_total = t_paid = t_open = 0.0
+    for r in rows:
+        t_drinks += r["total_drinks"]
+        t_total  += r["total_euros"]
+        t_paid   += r["paid_euros"]
+        t_open   += r["open_euros"]
+        paid_icon = "✅" if r["open_euros"] == 0 else "⚠️"
+        lines.append(
+            f"{paid_icon} {r['username']}: {r['total_drinks']} 🥤 | "
+            f"{r['total_euros']:.2f} € | offen: {r['open_euros']:.2f} €"
+        )
+    lines.append(
+        f"\n▶ Gesamt: {int(t_drinks)} Getränke | {t_total:.2f} €\n"
+        f"✅ bezahlt: {t_paid:.2f} €  ⚠️ offen: {t_open:.2f} €"
+    )
+    return "\n".join(lines)
+
+
+def _query_user_status(user_id: int, ms: str):
+    conn = get_conn()
+    row = conn.execute(
+        """
+        SELECT
+            COALESCE(SUM(b.amount), 0) AS total_drinks,
+            COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros,
+            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS paid_euros,
+            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS open_euros
+        FROM beers b
+        LEFT JOIN payments p ON p.beer_id = b.id
+        WHERE b.user_id = ? AND strftime('%Y-%m', b.drinking_date) = ?
+        """,
+        (user_id, ms),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def _format_status(row, ms: str) -> str:
+    return (
+        f"📊 Dein Stand {ms}:\n"
+        f"Getränke gesamt:  {row['total_drinks']}  ({row['total_euros']:.2f} €)\n"
+        f"✅ Bezahlt:       {row['paid_euros']:.2f} €\n"
+        f"⚠️ Offen:         {row['open_euros']:.2f} €"
+    )
+
+
+def _query_user_entries(user_id: int, ms: str):
+    conn = get_conn()
+    rows = conn.execute(
+        """
+        SELECT b.id, b.drinking_date, b.amount, b.drink_type, b.price_per_unit,
+               COALESCE(p.is_paid, 0) AS is_paid,
+               p.method
+        FROM beers b
+        LEFT JOIN payments p ON p.beer_id = b.id
+        WHERE b.user_id = ? AND strftime('%Y-%m', b.drinking_date) = ?
+        ORDER BY b.drinking_date DESC
+        """,
+        (user_id, ms),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def _format_entries(rows, ms: str) -> str:
+    if not rows:
+        return f"Keine Einträge für {ms}."
+
+    lines = [f"🍺 Deine Einträge {ms}:\n"]
+    total_euros = 0.0
+    for r in rows:
+        status_icon = "✅" if r["is_paid"] else "⚠️"
+        method = f" ({r['method']})".lower() if r["method"] else ""
+        label = DRINK_CATALOG.get(r["drink_type"], {}).get("label", r["drink_type"])
+        euros = r["amount"] * r["price_per_unit"]
+        total_euros += euros
+        lines.append(
+            f"{status_icon} #{r['id']} | {r['drinking_date']} | "
+            f"{r['amount']}× {label} = {euros:.2f} €{method}"
+        )
+    lines.append(f"\nGesamt: {total_euros:.2f} €")
+    return "\n".join(lines)
 
 
 # ──────────────────────────── Befehle ────────────────────────────
@@ -232,50 +360,9 @@ async def wasser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def uebersicht(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Monatsübersicht aller Spieler – wie die Startseite der Web-App."""
     ms = month_str_today()
-    conn = get_conn()
-    rows = conn.execute(
-        """
-        SELECT
-            u.username,
-            COALESCE(SUM(b.amount), 0) AS total_drinks,
-            COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros,
-            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS paid_euros,
-            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS open_euros
-        FROM users u
-        LEFT JOIN beers b
-            ON u.id = b.user_id
-            AND strftime('%Y-%m', b.drinking_date) = ?
-        LEFT JOIN payments p ON p.beer_id = b.id
-        GROUP BY u.id
-        HAVING total_drinks > 0
-        ORDER BY total_euros DESC
-        """,
-        (ms,),
-    ).fetchall()
-    conn.close()
-
-    if not rows:
-        await update.message.reply_text(f"Noch keine Einträge für {ms}.")
-        return
-
-    lines = [f"📊 Monatsübersicht {ms}:\n"]
-    t_drinks = 0
-    t_total = t_paid = t_open = 0.0
-    for r in rows:
-        t_drinks += r["total_drinks"]
-        t_total  += r["total_euros"]
-        t_paid   += r["paid_euros"]
-        t_open   += r["open_euros"]
-        paid_icon = "✅" if r["open_euros"] == 0 else "⚠️"
-        lines.append(
-            f"{paid_icon} {r['username']}: {r['total_drinks']} 🥤 | "
-            f"{r['total_euros']:.2f} € | offen: {r['open_euros']:.2f} €"
-        )
-    lines.append(
-        f"\n▶ Gesamt: {int(t_drinks)} Getränke | {t_total:.2f} €\n"
-        f"✅ bezahlt: {t_paid:.2f} €  ⚠️ offen: {t_open:.2f} €"
-    )
-    await update.message.reply_text("\n".join(lines))
+    rows = _query_month_overview(ms)
+    text = _format_overview(rows, ms)
+    await update.message.reply_text(text)
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -285,28 +372,8 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     ms = month_str_today()
-    conn = get_conn()
-    row = conn.execute(
-        """
-        SELECT
-            COALESCE(SUM(b.amount), 0) AS total_drinks,
-            COALESCE(SUM(b.amount * b.price_per_unit), 0) AS total_euros,
-            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=1 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS paid_euros,
-            COALESCE(SUM(CASE WHEN COALESCE(p.is_paid,0)=0 THEN b.amount * b.price_per_unit ELSE 0 END), 0) AS open_euros
-        FROM beers b
-        LEFT JOIN payments p ON p.beer_id = b.id
-        WHERE b.user_id = ? AND strftime('%Y-%m', b.drinking_date) = ?
-        """,
-        (user["id"], ms),
-    ).fetchone()
-    conn.close()
-
-    await update.message.reply_text(
-        f"📊 Dein Stand {ms}:\n"
-        f"Getränke gesamt:  {row['total_drinks']}  ({row['total_euros']:.2f} €)\n"
-        f"✅ Bezahlt:       {row['paid_euros']:.2f} €\n"
-        f"⚠️ Offen:         {row['open_euros']:.2f} €"
-    )
+    row = _query_user_status(user["id"], ms)
+    await update.message.reply_text(_format_status(row, ms))
 
 
 async def liste(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -317,39 +384,252 @@ async def liste(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     ms = month_str_today()
-    conn = get_conn()
-    rows = conn.execute(
-        """
-        SELECT b.id, b.drinking_date, b.amount, b.drink_type, b.price_per_unit,
-               COALESCE(p.is_paid, 0) AS is_paid,
-               p.method
-        FROM beers b
-        LEFT JOIN payments p ON p.beer_id = b.id
-        WHERE b.user_id = ? AND strftime('%Y-%m', b.drinking_date) = ?
-        ORDER BY b.drinking_date DESC
-        """,
-        (user["id"], ms),
-    ).fetchall()
-    conn.close()
+    rows = _query_user_entries(user["id"], ms)
+    text = _format_entries(rows, ms)
+    await update.message.reply_text(text)
 
-    if not rows:
-        await update.message.reply_text(f"Keine Einträge für {ms}.")
+
+# ──────────────────────────── Inline-Buttons / Menüs ────────────────────────────
+
+def build_main_menu(admin: bool = False) -> InlineKeyboardMarkup:
+    """Hauptmenü: Übersicht über alle Aktionen."""
+    keyboard = []
+    row = []
+    for key, info in DRINK_CATALOG.items():
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+        row.append(InlineKeyboardButton(info["label"], callback_data=f"drink:{key}"))
+    if row:
+        keyboard.append(row)
+    keyboard.append([InlineKeyboardButton("📊 Monatsübersicht", callback_data="overview")])
+    keyboard.append([InlineKeyboardButton("👤 Mein Status", callback_data="status")])
+    keyboard.append([InlineKeyboardButton("📋 Meine Einträge", callback_data="list")])
+    if admin:
+        keyboard.append([InlineKeyboardButton("🔑 Admin-Bereich", callback_data="admin")])
+    return InlineKeyboardMarkup(keyboard)
+
+
+def build_drink_menu() -> InlineKeyboardMarkup:
+    """Getränke-Auswahl mit Mengen-Buttons."""
+    keyboard = []
+    for key, info in DRINK_CATALOG.items():
+        keyboard.append([InlineKeyboardButton(f"{info['label']} ({info['price']:.2f} €)", callback_data=f"drink:{key}")])
+    keyboard.append([InlineKeyboardButton("↩️ Zurück zum Menü", callback_data="menu")])
+    return InlineKeyboardMarkup(keyboard)
+
+
+def build_admin_menu() -> InlineKeyboardMarkup:
+    """Administration: nur für Admins sichtbar."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📊 Gesamtübersicht", callback_data="admin_overview")],
+        [InlineKeyboardButton("⚠️ Offene Beträge", callback_data="admin_open")],
+        [InlineKeyboardButton("↩️ Zurück zum Menü", callback_data="menu")],
+    ])
+
+
+def _require_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> sqlite3.Row | None:
+    """Holt den verknüpften User oder antwortet mit Fehlermeldung."""
+    user = get_user_by_telegram_id(update.effective_user.id)
+    if user is None:
+        context.bot.loop.create_task(
+            update.effective_chat.send_message(
+                "🔗 Nicht verknüpft. Bitte zuerst /link <username> verwenden."
+            )
+        )
+        return None
+    return user
+
+
+# ──────────────────────────── Callback-Handler ────────────────────────────
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Zentrale Verarbeitung aller Inline-Button-Klicks."""
+    query = update.callback_query
+    await query.answer()
+    data = query.data or ""
+    ms = month_str_today()
+
+    user = get_user_by_telegram_id(update.effective_user.id)
+    admin = bool(user and is_admin(user))
+
+    # ── Zurück zum Hauptmenü ──
+    if data == "menu":
+        text = "🍺 Hauptmenü"
+        await query.edit_message_text(text, reply_markup=build_main_menu(admin))
         return
 
-    lines = [f"🍺 Deine Einträge {ms}:\n"]
-    total_euros = 0.0
-    for r in rows:
-        status_icon = "✅" if r["is_paid"] else "⚠️"
-        method = f" ({r['method']})".lower() if r["method"] else ""
-        label = DRINK_CATALOG.get(r["drink_type"], {}).get("label", r["drink_type"])
-        euros = r["amount"] * r["price_per_unit"]
-        total_euros += euros
-        lines.append(
-            f"{status_icon} #{r['id']} | {r['drinking_date']} | "
-            f"{r['amount']}× {label} = {euros:.2f} €{method}"
+    # ── Getränk wählen: Getränk im Menü angeklickt → Mengenauswahl anzeigen ──
+    if data.startswith("drink:"):
+        drink_key = data.split(":", 1)[1]
+        if drink_key not in DRINK_CATALOG:
+            await query.edit_message_text("❓ Unbekanntes Getränk.", reply_markup=build_main_menu(admin))
+            return
+        info = DRINK_CATALOG[drink_key]
+        keyboard = [[InlineKeyboardButton(str(n), callback_data=f"qty:{drink_key}:{n}") for n in range(1, 6)]]
+        keyboard.append([InlineKeyboardButton("↩️ Abbrechen", callback_data="menu")])
+        await query.edit_message_text(
+            f"🥤 {info['label']} ({info['price']:.2f} €) – Anzahl wählen:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
         )
-    lines.append(f"\nGesamt: {total_euros:.2f} €")
-    await update.message.reply_text("\n".join(lines))
+        return
+
+    # ── Menge wählen → Buchung durchführen ──
+    if data.startswith("qty:"):
+        if user is None:
+            await query.edit_message_text("🔗 Nicht verknüpft. Bitte zuerst /link <username>.")
+            return
+        _, drink_key, amount_str = data.split(":", 2)
+        amount = int(amount_str)
+        info, today = _book(user, drink_key, amount)
+        euros = amount * info["price"]
+        await query.edit_message_text(
+            f"✅ {amount}× {info['label']} für {today} eingetragen.\n"
+            f"Kosten: {euros:.2f} €",
+            reply_markup=build_main_menu(admin),
+        )
+        return
+
+    # ── Übersicht aller Spieler ──
+    if data == "overview" or data == "admin_overview":
+        rows = _query_month_overview(ms)
+        text = _format_overview(rows, ms)
+        await query.edit_message_text(text, reply_markup=build_main_menu(admin))
+        return
+
+    # ── Eigener Status ──
+    if data == "status":
+        if user is None:
+            await query.edit_message_text("🔗 Nicht verknüpft. Bitte zuerst /link <username>.")
+            return
+        row = _query_user_status(user["id"], ms)
+        await query.edit_message_text(_format_status(row, ms), reply_markup=build_main_menu(admin))
+        return
+
+    # ── Eigene Einträge mit Löschen-Buttons ──
+    if data == "list":
+        if user is None:
+            await query.edit_message_text("🔗 Nicht verknüpft. Bitte zuerst /link <username>.")
+            return
+        rows = _query_user_entries(user["id"], ms)
+        text = _format_entries(rows, ms)
+        keyboard = [[InlineKeyboardButton("🗑 letzte Aktion rückgängig", callback_data="undo")]]
+        keyboard.append([InlineKeyboardButton("↩️ Zurück zum Menü", callback_data="menu")])
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    # ── Letzte eigene Aktion rückgängig machen ──
+    if data == "undo":
+        if user is None:
+            await query.edit_message_text("🔗 Nicht verknüpft. Bitte zuerst /link <username>.")
+            return
+        conn = get_conn()
+        last = conn.execute(
+            "SELECT id, amount, drink_type FROM beers WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+            (user["id"],),
+        ).fetchone()
+        if last is None:
+            conn.close()
+            await query.edit_message_text("Kein Eintrag gefunden.", reply_markup=build_main_menu(admin))
+            return
+        conn.execute("DELETE FROM beers WHERE id = ?", (last["id"],))
+        conn.execute("DELETE FROM payments WHERE beer_id = ?", (last["id"],))
+        conn.commit()
+        conn.close()
+        label = DRINK_CATALOG.get(last["drink_type"], {}).get("label", last["drink_type"])
+        # Danach zurück zur Liste
+        rows = _query_user_entries(user["id"], ms)
+        text = _format_entries(rows, ms)
+        keyboard = [[InlineKeyboardButton("🗑 letzte Aktion rückgängig", callback_data="undo")]]
+        keyboard.append([InlineKeyboardButton("↩️ Zurück zum Menü", callback_data="menu")])
+        await query.edit_message_text(
+            f"🗑 Letzten Eintrag (#{last['id']}, {last['amount']}× {label}) gelöscht.\n\n{text}",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+        return
+
+    # ── Link-Info ──
+    if data == "link_info":
+        await query.edit_message_text(
+            "🔗 Um den Bot mit deinem Web-Konto zu verknüpfen, sende:\n/link <dein_benutzername>",
+            reply_markup=build_main_menu(admin),
+        )
+        return
+
+    # ── Admin-Bereich ──
+    if data == "admin":
+        if not admin:
+            await query.edit_message_text("⛔ Keine Admin-Rechte.", reply_markup=build_main_menu(False))
+            return
+        await query.edit_message_text("🔑 Admin-Bereich", reply_markup=build_admin_menu())
+        return
+
+    # ── Admin: Offene Beträge mit Bezahl-Buttons ──
+    if data == "admin_open":
+        if not admin:
+            await query.edit_message_text("⛔ Keine Admin-Rechte.")
+            return
+        conn = get_conn()
+        rows = conn.execute(
+            """
+            SELECT b.id, b.amount, b.drink_type, b.drinking_date, u.username,
+                   b.amount * b.price_per_unit AS euros
+            FROM beers b
+            JOIN users u ON u.id = b.user_id
+            LEFT JOIN payments p ON p.beer_id = b.id
+            WHERE COALESCE(p.is_paid, 0) = 0
+            ORDER BY b.drinking_date DESC, b.id DESC
+            LIMIT 20
+            """
+        ).fetchall()
+        conn.close()
+        if not rows:
+            await query.edit_message_text("✅ Keine offenen Beträge.", reply_markup=build_main_menu(admin))
+            return
+        lines = ["⚠️ Offene Einträge:\n"]
+        keyboard = []
+        for r in rows:
+            lines.append(f"#{r['id']} {r['username']}: {r['amount']}× {DRINK_CATALOG.get(r['drink_type'], {}).get('label', r['drink_type'])} – {r['euros']:.2f} €")
+            keyboard.append([InlineKeyboardButton(f"#{r['id']} {r['username']} – bezahlt (Bar)", callback_data=f"pay:{r['id']}:BAR")])
+            keyboard.append([InlineKeyboardButton(f"#{r['id']} {r['username']} – bezahlt (PayPal)", callback_data=f"pay:{r['id']}:PAYPAL")])
+        keyboard.append([InlineKeyboardButton("↩️ Zurück zum Menü", callback_data="menu")])
+        await query.edit_message_text("\n".join(lines), reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    # ── Admin: Zahlung als bezahlt markieren ──
+    if data.startswith("pay:"):
+        if not admin:
+            await query.edit_message_text("⛔ Keine Admin-Rechte.")
+            return
+        _, beer_id_str, method = data.split(":", 2)
+        beer_id = int(beer_id_str)
+        conn = get_conn()
+        conn.execute(
+            """
+            INSERT INTO payments (beer_id, is_paid, method, marked_by_user_id)
+            VALUES (?, 1, ?, ?)
+            ON CONFLICT(beer_id) DO UPDATE SET
+                is_paid = 1,
+                method = excluded.method,
+                marked_by_user_id = excluded.marked_by_user_id,
+                marked_at = CURRENT_TIMESTAMP
+            """,
+            (beer_id, method, user["id"]),
+        )
+        conn.commit()
+        conn.close()
+        await query.edit_message_text(f"✅ Eintrag #{beer_id} als bezahlt markiert ({method}).", reply_markup=build_main_menu(admin))
+        return
+
+    # ── Fallback: unbekannte Aktion ──
+    await query.edit_message_text("Unbekannte Aktion.", reply_markup=build_main_menu(admin))
+
+
+async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Öffnet das Hauptmenü mit Inline-Buttons."""
+    user = get_user_by_telegram_id(update.effective_user.id)
+    admin = bool(user and is_admin(user))
+    await update.message.reply_text("🍺 Hauptmenü", reply_markup=build_main_menu(admin))
 
 
 # ──────────────────────────── Admin ────────────────────────────

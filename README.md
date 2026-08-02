@@ -126,16 +126,26 @@ Dieser Flow ist bewusst einfach gehalten und für eine kleine AH-Gruppe ausgeleg
 
 ## Docker / Portainer
 
-### Image bauen
+### Image von GHCR beziehen
+
+Das Image wird automatisch über den GitHub-Workflow `.github/workflows/docker-build-push.yml` gebaut und nach **GHCR** (`ghcr.io/jbkunama1/hai.vfbahkaessle`) gepusht:
+
+- **Push auf `main`** → baut & pusht `latest` + Commit-SHA-Tag
+- **Git-Tag `v*`** (z. B. `v1.2.0`) → baut & pusht zusätzlich SemVer-Tags (`1.2.0`, `1.2`)
+- **Manuell** über GitHub → **Actions** → *Docker Build & Push (GHCR)* → **Run workflow**
+
+Lokal nur noch das fertige Image ziehen:
 
 ```bash
-docker build -t haivfbahkaessle:latest .
+docker pull ghcr.io/jbkunama1/hai.vfbahkaessle:latest
 ```
+
+> **Hinweis (privat/Portainer):** Für öffentliche Repos ist das Paket public und ohne Login pullbar. Bei privaten Paketen einmalig `docker login ghcr.io` (bzw. Registry-Credentials im Portainer hinterlegen).
 
 ### Stack mit docker-compose
 
 ```bash
-docker compose up -d   # oder: docker-compose up -d
+docker compose pull && docker compose up -d   # neues Image ziehen + starten
 ```
 
 `docker-compose.yml` definiert zwei Services:
@@ -143,7 +153,7 @@ docker compose up -d   # oder: docker-compose up -d
 ```yaml
 services:
   bierkaessle_web:
-    image: haivfbahkaessle:latest
+    image: ghcr.io/jbkunama1/hai.vfbahkaessle:latest
     container_name: bierkaessle_web
     ports:
       - "1904:1904"
@@ -156,7 +166,7 @@ services:
     restart: unless-stopped
 
   bierkaessle_bot:
-    image: haivfbahkaessle:latest
+    image: ghcr.io/jbkunama1/hai.vfbahkaessle:latest
     container_name: bierkaessle_bot
     environment:
       - TELEGRAM_BOT_TOKEN=DEIN_TELEGRAM_BOT_TOKEN
@@ -181,6 +191,7 @@ volumes:
 2. Inhalt der `docker-compose.yml` einfügen.
 3. Im Service `bierkaessle_bot` die Umgebungsvariable `TELEGRAM_BOT_TOKEN` auf deinen echten Bot-Token setzen.
 4. Stack deployen.
+5. Für Updates: Stack erneut bereitstellen bzw. `docker compose pull && docker compose up -d` (das Image kommt dann frisch von GHCR).
 
 ## Sicherheit / Betrieb
 

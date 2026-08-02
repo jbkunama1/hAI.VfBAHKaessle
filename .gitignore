@@ -25,7 +25,7 @@ instance/
 .env.*
 
 # Docker
-.dockerignore
+# (`.dockerignore` wird bewusst versioniert, damit der CI-Build davon profitiert)
 
 # IDE
 .vscode/

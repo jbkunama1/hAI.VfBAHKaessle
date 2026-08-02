@@ -1,0 +1,42 @@
+# Git & CI
+.git
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+*.egg-info
+dist
+build
+.venv
+venv
+env
+
+# IDE / Editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Doku / Sonstiges
+README.md
+LICENSE
+*.md
+*.txt
+!requirements.txt
+
+# Lokale Datenbank (wird über Volume gemountet)
+instance
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
