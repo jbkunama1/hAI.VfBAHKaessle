@@ -1,12 +1,16 @@
 import csv
 import os
 import re
+import shutil
 import sqlite3
 import sys
+import threading
+import time
 from datetime import date, datetime
 
 from flask import (
     Flask, render_template, request, redirect, url_for, session, g, flash, make_response,
+    send_file,
 )
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -188,6 +192,19 @@ TRANSLATIONS = {
         "de": "Exportiert alle Eintr\u00e4ge des gew\u00e4hlten Monats als CSV (Spieler, Datum, Anzahl, Getr\u00e4nk, Preis).",
         "en": "Exports all entries of the selected month as CSV (player, date, amount, drink, price).",
     },
+    "admin.backup": {"de": "Backups", "en": "Backups"},
+    "admin.backup.create": {"de": "Jetzt sichern", "en": "Back up now"},
+    "admin.backup.download": {"de": "Download", "en": "Download"},
+    "admin.backup.empty": {"de": "Noch keine Backups vorhanden.", "en": "No backups yet."},
+    "admin.backup.help": {
+        "de": "Automatische Sicherung alle {hours} Stunden, es werden die letzten {keep} Backups behalten.",
+        "en": "Automatic backup every {hours} hours, keeping the latest {keep} backups.",
+    },
+    "admin.backup.created": {"de": "Backup erfolgreich erstellt.", "en": "Backup created successfully."},
+    "admin.backup.not_found": {"de": "Backup nicht gefunden.", "en": "Backup not found."},
+    "admin.backup.table_date": {"de": "Datum", "en": "Date"},
+    "admin.backup.table_size": {"de": "Gr\u00f6\u00dfe", "en": "Size"},
+    "admin.backup.table_actions": {"de": "Aktionen", "en": "Actions"},
     "admin.latest_entries_global": {"de": "Letzte Eintr\u00e4ge (global)", "en": "Latest entries (global)"},
     "admin.reset_requests": {"de": "Passwort-Anfragen", "en": "Password requests"},
     "admin.reset_requests_empty": {"de": "Keine offenen Passwort-Anfragen.", "en": "No open password requests."},
@@ -444,6 +461,85 @@ def create_app(test_config=None):
         ).fetchone()
         return row["c"] if row else 0
 
+    # ──────────────────────────── Backups ────────────────────────────
+    BACKUP_DIR = os.path.join(app.instance_path, "backups")
+    BACKUP_INTERVAL_SECONDS = float(os.environ.get("BACKUP_INTERVAL_HOURS", "24")) * 3600
+    BACKUP_KEEP = int(os.environ.get("BACKUP_KEEP", "10"))
+
+    def _backup_dir_ready():
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        return BACKUP_DIR
+
+    def create_backup():
+        """Erstellt eine konsistente SQLite-Kopie mit aktuellem WAL-Bestand."""
+        _backup_dir_ready()
+        src = app.config["DATABASE"]
+        if not os.path.exists(src):
+            return None
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        dest = os.path.join(BACKUP_DIR, f"bierkaessle-{ts}.sqlite3")
+        try:
+            sconn = sqlite3.connect(src)
+            dconn = sqlite3.connect(dest)
+            try:
+                sconn.backup(dconn)
+            finally:
+                dconn.close()
+                sconn.close()
+        except Exception:
+            if os.path.exists(dest):
+                os.remove(dest)
+            return None
+        return dest
+
+    def list_backups():
+        """Liefert (filename, size_bytes, mtime) absteigend nach Zeit."""
+        _backup_dir_ready()
+        entries = []
+        for fn in os.listdir(BACKUP_DIR):
+            if not fn.startswith("bierkaessle-") or not fn.endswith(".sqlite3"):
+                continue
+            fp = os.path.join(BACKUP_DIR, fn)
+            try:
+                st = os.stat(fp)
+                entries.append((fn, st.st_size, st.st_mtime))
+            except OSError:
+                continue
+        entries.sort(key=lambda e: e[2], reverse=True)
+        return entries
+
+    def cleanup_old_backups():
+        """Entfernt Backups, die über BACKUP_KEEP hinausgehen."""
+        backups = list_backups()
+        for fn, _, _ in backups[BACKUP_KEEP:]:
+            try:
+                os.remove(os.path.join(BACKUP_DIR, fn))
+            except OSError:
+                pass
+
+    def _start_backup_worker():
+        # Nicht im Test-Modus starten, damit Tests deterministisch bleiben
+        if app.config.get("TESTING"):
+            return
+
+        def _run():
+            while not app.config.get("BACKUP_STOP"):
+                time.sleep(BACKUP_INTERVAL_SECONDS)
+                try:
+                    with app.app_context():
+                        created = create_backup()
+                        if created:
+                            cleanup_old_backups()
+                except Exception as exc:
+                    print(f"[Backup] Fehler: {exc}", file=sys.stderr)
+
+        thread = threading.Thread(target=_run, daemon=True, name="backup-worker")
+        thread.start()
+        app.config["BACKUP_THREAD"] = thread
+
+    _start_backup_worker()
+    cleanup_old_backups()
+
     @app.context_processor
     def inject_globals():
         user = current_user()
@@ -462,6 +558,10 @@ def create_app(test_config=None):
             "supported_languages": sorted(SUPPORTED_LANGUAGES),
             "supported_themes": sorted(SUPPORTED_THEMES),
             "open_reset_requests_count": open_reset_request_count() if admin_flag else 0,
+            "backup_dir": BACKUP_DIR,
+            "backup_interval_hours": int(BACKUP_INTERVAL_SECONDS // 3600),
+            "backup_keep": BACKUP_KEEP,
+            "datetime": datetime,
         }
 
     def login_required(view):
@@ -853,6 +953,34 @@ def create_app(test_config=None):
             beer_price=beer_price,
             drink_label=DRINK_LABEL,
             reset_requests=reset_requests,
+            backups=list_backups(),
+        )
+
+    @app.route("/admin/backup/create", methods=["POST"])
+    @login_required
+    @admin_required
+    def admin_backup_create():
+        created = create_backup()
+        if created:
+            cleanup_old_backups()
+            flash_i18n("admin.backup.created", "success")
+        else:
+            flash_i18n("admin.backup.not_found", "danger")
+        return redirect(url_for("admin_dashboard"))
+
+    @app.route("/admin/backup/download/<path:filename>")
+    @login_required
+    @admin_required
+    def admin_backup_download(filename):
+        # Nur Dateinamen aus dem Backup-Verzeichnis zulassen (kein Pfad-Traversal)
+        backup_names = {fn for fn, _, _ in list_backups()}
+        if filename not in backup_names:
+            flash_i18n("admin.backup.not_found", "danger")
+            return redirect(url_for("admin_dashboard"))
+        return send_file(
+            os.path.join(BACKUP_DIR, filename),
+            as_attachment=True,
+            download_name=filename,
         )
 
     @app.route("/admin/reset-request/<int:request_id>/resolve", methods=["POST"])

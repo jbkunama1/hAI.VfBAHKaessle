@@ -128,6 +128,38 @@
 </form>
 <p class="text-muted small">{{ t('admin.export_help') }}</p>
 
+<h2 class="h5 mt-4">{{ t('admin.backup') }}</h2>
+<form method="post" action="{{ url_for('admin_backup_create') }}" class="mb-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-sm btn-primary">{{ t('admin.backup.create') }}</button>
+</form>
+
+{% if backups %}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>{{ t('admin.backup.table_date') }}</th>
+            <th>{{ t('admin.backup.table_size') }}</th>
+            <th>{{ t('admin.backup.table_actions') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for filename, size, mtime in backups %}
+        <tr>
+            <td>{{ datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td>{{ (size / 1024 / 1024)|round(2) }} MB</td>
+            <td>
+                <a href="{{ url_for('admin_backup_download', filename=filename) }}" class="btn btn-sm btn-outline-primary">{{ t('admin.backup.download') }}</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-muted">{{ t('admin.backup.empty') }}</p>
+{% endif %}
+<p class="text-muted small">{{ t('admin.backup.help', hours=backup_interval_hours, keep=backup_keep) }}</p>
+
 <h2 class="h5 mt-4">{{ t('admin.latest_entries_global') }}</h2>
 <table class="table table-striped">
     <thead>
