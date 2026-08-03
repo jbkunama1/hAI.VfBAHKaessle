@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  bierkaessle_web:
+    image: ghcr.io//hai.vfbahkaessle:latest
+    container_name: bierkaessle_web
+    ports:
+      - "1904:1904"
+    environment:
+      - SECRET_KEY=
+      - BEER_PRICE=
+      - ADMIN_USERNAMES=
+      - BACKUP_INTERVAL_HOURS=
+      - BACKUP_KEEP=
+    volumes:
+      - bierkaessle_data:/app/instance
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:1904/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  bierkaessle_bot:
+    image: ghcr.io//hai.vfbahkaessle:latest
+    container_name: bierkaessle_bot
+    environment:
+      - TELEGRAM_BOT_TOKEN=
+      - BEER_PRICE=
+    volumes:
+      - bierkaessle_data:/app/instance
+    command: ["python", "telegram_bot.py"]
+    restart: unless-stopped
+    depends_on:
+      bierkaessle_web:
+        condition: service_healthy
+
+volumes:
+  bierkaessle_data:
