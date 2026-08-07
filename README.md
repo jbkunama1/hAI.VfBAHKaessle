@@ -1,5 +1,9 @@
 # hAI.VfBAHKaessle – VfB Grötzingen AH Bierkässle
 
+<a href="https://www.buymeacoffee.com/highfish">
+<img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174">
+</a>
+
 ![VfB Grötzingen AH](https://img.shields.io/badge/VfB-Grötzingen%20AH-blue)
 
 [![GitHub stars](https://img.shields.io/github/stars/jbkunama1/hAI.VfBAHKaessle)](https://github.com/jbkunama1/hAI.VfBAHKaessle)
@@ -215,3 +219,4 @@ Für Admins (erster registrierter User oder über `ADMIN_USERNAMES` konfiguriert
 - CSV-Export aller Einträge eines Monats: `username, date, amount`
 
 Zugriff auf das Admin-Panel erfolgt über den Link **„Admin“** in der Navigation (nur sichtbar für Admin-Accounts).
+
