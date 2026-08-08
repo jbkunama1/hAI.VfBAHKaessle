@@ -4,13 +4,13 @@
 <img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174">
 </a>
 
-![VfB Grötzingen AH](https://img.shields.io/badge/VfB-Grötzingen%20AH-blue)
+[![VfB Grötzingen AH](https://img.shields.io/badge/VfB-Grötzingen%20AH-blue)](https://github.com/jbkunama1/hAI.VfBAHKaessle)
 
 [![GitHub stars](https://img.shields.io/github/stars/jbkunama1/hAI.VfBAHKaessle)](https://github.com/jbkunama1/hAI.VfBAHKaessle)
 [![TruffleHog scan](https://img.shields.io/badge/security-TruffleHog-blue)](https://github.com/jbkunama1/hAI.VfBAHKaessle/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/jbkunama1/hAI.VfBAHKaessle/blob/main/LICENSE)
-![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
-![Docker ready](https://img.shields.io/badge/docker-ready-blue)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://github.com/jbkunama1/hAI.VfBAHKaessle)
+[![Docker ready](https://img.shields.io/badge/docker-ready-blue)](https://github.com/jbkunama1/hAI.VfBAHKaessle)
 
 Flask-Webapp mit SQLite-Backend für das AH-Bierkässle des VfB Grötzingen, inklusive Telegram-Bot und einer kleinen GitHub-Pages-Startseite (`index.html`). Lizenz: MIT (siehe `LICENSE`).
 
@@ -219,4 +219,3 @@ Für Admins (erster registrierter User oder über `ADMIN_USERNAMES` konfiguriert
 - CSV-Export aller Einträge eines Monats: `username, date, amount`
 
 Zugriff auf das Admin-Panel erfolgt über den Link **„Admin“** in der Navigation (nur sichtbar für Admin-Accounts).
-
