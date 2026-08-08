@@ -12,30 +12,41 @@ permissions:
 
 jobs:
   secret-scan:
-    name: Secret Scan (Gitleaks)
+    name: Secret Scan (Gitleaks + TruffleHog)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event.pull_request.head.sha || github.sha }}
+          extra_args: --only-verified
 
   codeql:
     name: SAST (CodeQL)
-    uses: github/codeql-action/codeql-analysis.yml@v3
-    with:
-      languages: javascript,python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript,python
+      - uses: github/codeql-action/analyze@v3
 
   trivy:
     name: IaC / FS Scan (Trivy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           security-checks: vuln,secret
