@@ -27,10 +27,11 @@ Flask-Webapp mit SQLite-Backend für das AH-Bierkässle des VfB Grötzingen, ink
     - `password_reset_requests` (interne Passwort-Vergessen-Anfragen für den Admin)
 - **Telegram-Bot** (`telegram_bot.py`)
   - Greift auf dieselbe SQLite-Datenbank zu
-  - Kommandos für Biereintrag und Monatsstatus
+  - Verwendet Inline-Buttons für Interaktionen (Biere melden, Status abrufen)
 - **Docker-/Portainer-Stack**
   - Ein Container für Web-App, ein Container für den Bot
   - Gemeinsames Volume für die Datenbank
+  - Unterstützt automatische Backups der SQLite-Datenbank über Umgebungsvariablen
 - **GitHub Pages**
   - Statische Landing-Page `index.html` als Einstieg für das Projekt (Beschreibung, Links)
 
@@ -59,6 +60,9 @@ Flask-Webapp mit SQLite-Backend für das AH-Bierkässle des VfB Grötzingen, ink
 - **„Passwort vergessen?“-Funktion**: Statt Mail-Versand wird eine interne Anfrage an den Admin erzeugt, die dieser im Admin-Panel sieht und mit einem neu gesetzten Passwort beantwortet
 - Mobil-taugliche UI (Bootstrap 5, dunkles Theme)
 - Telegram-Bot zur schnellen Erfassung direkt aus Telegram
+- **Automatische Backups der SQLite-Datenbank**
+  - Konfigurierbar über `BACKUP_INTERVAL_HOURS` (Standard: 24h) und `BACKUP_KEEP` (Standard: 10 Backups).
+  - Backups werden in `instance/backups` im Container gespeichert und können über `/admin/backup/create` und `/admin/backup/download/<filename>` im Admin-Panel verwaltet werden.
 
 ## Lokale Installation (ohne Docker)
 
@@ -77,8 +81,10 @@ pip install -r requirements.txt
 ```bash
 export SECRET_KEY="change-me"      # in Produktion durch sicheren Key ersetzen
 export BEER_PRICE="1.50"           # Preis pro Bier in Euro
-export ADMIN_USERNAMES="admin"     # kommagetrennte Liste der Admin-Benutzernamen
+export ADMIN_USERNAMES="daniel"    # kommagetrennte Liste der Admin-Benutzernamen (Standard ist 'daniel')
 export PORT="1904"                 # Port für die Web-App
+export BACKUP_INTERVAL_HOURS="24"  # Automatische Backups alle X Stunden (Standard: 24)
+export BACKUP_KEEP="10"            # Anzahl der Backups, die behalten werden (Standard: 10)
 python app.py
 ```
 
@@ -105,24 +111,18 @@ Die Web-App und der Bot verwenden beide die SQLite-Datenbank im Ordner `instance
    - Benutzer registrieren (Benutzername + Passwort – keine E-Mail-Adresse nötig)
 2. **Telegram-Bot starten**
    - Im Telegram-Client den Bot (z. B. `@dein_ah_bierkaessle_bot`) öffnen
-   - `/start` eingeben
+   - `/start` eingeben, um das Menü mit den Inline-Buttons zu sehen.
 3. **Telegram mit Web-Account verknüpfen**
    - Befehl:
      ```
      /link deinusername
      ```
    - Der Bot schreibt die `telegram_id` in die `users`-Tabelle
-4. **Biere melden**
-   - Beispielbefehle:
-     - `/bier` → bucht 1 Bier für **heute**
-     - `/bier 3` → bucht 3 Biere für **heute**
-   - Der Bot legt Einträge in der Tabelle `beers` an (Datum = heutiges Datum)
-5. **Status abrufen**
-   - Befehl:
-     ```
-     /status
-     ```
-   - Antwort z. B.: `Dein Stand für 2026-07: 8 Bier(e) = 12.00 €.`
+4. **Biere melden & Status abrufen (via Inline-Buttons)**
+   - Nach `/start` oder durch Klicken auf "Menü" erscheinen Inline-Buttons für Aktionen wie "Bier melden", "Monatsübersicht" oder "Mein Status".
+   - Wähle "Bier melden" und dann die gewünschte Anzahl.
+   - Der Bot legt Einträge in der Tabelle `beers` an (Datum = heutiges Datum).
+   - Klicke "Mein Status" für deinen aktuellen Stand oder "Monatsübersicht" für die Team-Übersicht.
 
 Dieser Flow ist bewusst einfach gehalten und für eine kleine AH-Gruppe ausgelegt.
 
@@ -155,30 +155,39 @@ docker compose pull && docker compose up -d   # neues Image ziehen + starten
 ```yaml
 services:
   bierkaessle_web:
-    image: ghcr.io/jbkunama1/hai.vfbahkaessle:latest
+    image: ghcr.io/${GHCR_OWNER:-jbkunama1}/hai.vfbahkaessle:latest
     container_name: bierkaessle_web
     ports:
       - "1904:1904"
     environment:
-      - SECRET_KEY=change-me
-      - BEER_PRICE=1.50
-      - ADMIN_USERNAMES=admin
+      - SECRET_KEY=${SECRET_KEY:-change-me}
+      - BEER_PRICE=${BEER_PRICE:-1.50}
+      - ADMIN_USERNAMES=${ADMIN_USERNAMES:-daniel}
+      - BACKUP_INTERVAL_HOURS=${BACKUP_INTERVAL_HOURS:-24}
+      - BACKUP_KEEP=${BACKUP_KEEP:-10}
     volumes:
       - bierkaessle_data:/app/instance
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:1904/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   bierkaessle_bot:
-    image: ghcr.io/jbkunama1/hai.vfbahkaessle:latest
+    image: ghcr.io/${GHCR_OWNER:-jbkunama1}/hai.vfbahkaessle:latest
     container_name: bierkaessle_bot
     environment:
-      - TELEGRAM_BOT_TOKEN=DEIN_TELEGRAM_BOT_TOKEN
-      - BEER_PRICE=1.50
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - BEER_PRICE=${BEER_PRICE:-1.50}
     volumes:
       - bierkaessle_data:/app/instance
     command: ["python", "telegram_bot.py"]
     restart: unless-stopped
     depends_on:
-      - bierkaessle_web
+      bierkaessle_web:
+        condition: service_healthy
 
 volumes:
   bierkaessle_data:
@@ -187,13 +196,16 @@ volumes:
 - Web-App: erreichbar auf Port 1904
 - Datenbank: Volume `bierkaessle_data` (enthält `instance/bierkaessle.sqlite3`)
 
-### Einsatz in Portainer
+### Einsatz in Portainer (mit `portainer-stack.yml`)
 
-1. In Portainer unter **Stacks → Add stack** gehen.
-2. Inhalt der `docker-compose.yml` einfügen.
-3. Im Service `bierkaessle_bot` die Umgebungsvariable `TELEGRAM_BOT_TOKEN` auf deinen echten Bot-Token setzen.
-4. Stack deployen.
-5. Für Updates: Stack erneut bereitstellen bzw. `docker compose pull && docker compose up -d` (das Image kommt dann frisch von GHCR).
+Es existiert auch eine vorkonfigurierte `portainer-stack.yml` im Repository, die alle notwendigen Umgebungsvariablen für Portainer bereitstellt.
+
+1. Die `portainer-stack.yml` aus dem Repository kopieren.
+2. In Portainer unter **Stacks → Add stack** gehen.
+3. Den Inhalt der `portainer-stack.yml` einfügen.
+4. Die Umgebungsvariablen (z.B. `SECRET_KEY`, `TELEGRAM_BOT_TOKEN`) gemäß deiner Konfiguration setzen.
+5. Stack deployen.
+6. Für Updates: Stack erneut bereitstellen bzw. `docker compose pull && docker compose up -d` (das Image kommt dann frisch von GHCR).
 
 ## Sicherheit / Betrieb
 
