@@ -1,5 +1,6 @@
 import calendar
 import json
+import math
 import os
 import sqlite3
 import sys
@@ -666,7 +667,7 @@ def _status_poll_seconds() -> float:
     config = _load_status_config()
     try:
         value = float(config.get("poll_seconds") or os.environ.get("STATUS_POLL_SECONDS") or "30")
-        if value >= 5:
+        if value >= 5 and math.isfinite(value):
             return value
     except Exception:
         pass
