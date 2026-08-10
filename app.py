@@ -1,5 +1,6 @@
 import csv
 import json
+import math
 import os
 import re
 import shutil
@@ -476,18 +477,30 @@ def create_app(test_config=None):
     # ──────────────────────────── Telegram Status-Einstellungen ────────────────────────────
     STATUS_CONFIG_FILE = os.path.join(app.instance_path, "status_config.json")
 
+    def _valid_poll_seconds(value: object) -> float:
+        """Liefert poll_seconds als endlicher Wert >= 5, sonst 30."""
+        try:
+            poll = float(value)
+            if poll >= 5 and math.isfinite(poll):
+                return poll
+        except (ValueError, TypeError):
+            pass
+        print("[Status] Ungültiges STATUS_POLL_SECONDS, verwende 30s", file=sys.stderr)
+        return 30.0
+
     def load_status_config() -> dict:
         try:
             with open(STATUS_CONFIG_FILE, "r", encoding="utf-8") as fh:
                 data = json.load(fh)
             if isinstance(data, dict):
+                data["poll_seconds"] = _valid_poll_seconds(data.get("poll_seconds", 30))
                 return data
         except (FileNotFoundError, json.JSONDecodeError):
             pass
         # Fallback: Env-Vars, sonst Defaults
         return {
             "daily_time": os.environ.get("STATUS_DAILY_TIME", "23:00"),
-            "poll_seconds": float(os.environ.get("STATUS_POLL_SECONDS", "30")),
+            "poll_seconds": _valid_poll_seconds(os.environ.get("STATUS_POLL_SECONDS", "30")),
         }
 
     def save_status_config(daily_time: str, poll_seconds: str) -> bool:
@@ -499,7 +512,7 @@ def create_app(test_config=None):
             valid_time = False
         try:
             poll = float(poll_seconds)
-            valid_poll = poll >= 5
+            valid_poll = poll >= 5 and math.isfinite(poll)
         except (ValueError, TypeError):
             valid_poll = False
         if not (valid_time and valid_poll):
