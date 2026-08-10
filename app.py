@@ -1,4 +1,5 @@
 import csv
+import json
 import os
 import re
 import shutil
@@ -205,6 +206,17 @@ TRANSLATIONS = {
     "admin.backup.table_date": {"de": "Datum", "en": "Date"},
     "admin.backup.table_size": {"de": "Gr\u00f6\u00dfe", "en": "Size"},
     "admin.backup.table_actions": {"de": "Aktionen", "en": "Actions"},
+    "admin.status_settings": {"de": "Telegram Statusmeldungen", "en": "Telegram status messages"},
+    "admin.status_settings.daily_time": {"de": "Zeit der Tages-/Monatsmeldung", "en": "Daily/monthly message time"},
+    "admin.status_settings.time_hint": {"de": "Format HH:MM, z.B. 23:00", "en": "Format HH:MM, e.g. 23:00"},
+    "admin.status_settings.poll_seconds": {"de": "Prüf-Intervall (Sekunden)", "en": "Poll interval (seconds)"},
+    "admin.status_settings.poll_hint": {"de": "Min. 5. Wirkung nach Bot-Neustart.", "en": "Min 5. Takes effect after bot restart."},
+    "admin.status_settings.save": {"de": "Speichern", "en": "Save"},
+    "admin.status_settings.saved": {"de": "Status-Einstellungen gespeichert.", "en": "Status settings saved."},
+    "admin.status_settings.invalid": {
+        "de": "Ungültige Werte: Zeit als HH:MM, Intervall mindestens 5 s.",
+        "en": "Invalid values: time as HH:MM, interval at least 5 s.",
+    },
     "admin.latest_entries_global": {"de": "Letzte Eintr\u00e4ge (global)", "en": "Latest entries (global)"},
     "admin.reset_requests": {"de": "Passwort-Anfragen", "en": "Password requests"},
     "admin.reset_requests_empty": {"de": "Keine offenen Passwort-Anfragen.", "en": "No open password requests."},
@@ -461,6 +473,44 @@ def create_app(test_config=None):
         ).fetchone()
         return row["c"] if row else 0
 
+    # ──────────────────────────── Telegram Status-Einstellungen ────────────────────────────
+    STATUS_CONFIG_FILE = os.path.join(app.instance_path, "status_config.json")
+
+    def load_status_config() -> dict:
+        try:
+            with open(STATUS_CONFIG_FILE, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            if isinstance(data, dict):
+                return data
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+        # Fallback: Env-Vars, sonst Defaults
+        return {
+            "daily_time": os.environ.get("STATUS_DAILY_TIME", "23:00"),
+            "poll_seconds": float(os.environ.get("STATUS_POLL_SECONDS", "30")),
+        }
+
+    def save_status_config(daily_time: str, poll_seconds: str) -> bool:
+        hh, mm = None, None
+        try:
+            hh, mm = (int(p) for p in daily_time.split(":"))
+            valid_time = 0 <= hh <= 23 and 0 <= mm <= 59
+        except (ValueError, TypeError):
+            valid_time = False
+        try:
+            poll = float(poll_seconds)
+            valid_poll = poll >= 5
+        except (ValueError, TypeError):
+            valid_poll = False
+        if not (valid_time and valid_poll):
+            return False
+        os.makedirs(app.instance_path, exist_ok=True)
+        tmp = STATUS_CONFIG_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump({"daily_time": f"{hh:02d}:{mm:02d}", "poll_seconds": poll}, fh)
+        os.replace(tmp, STATUS_CONFIG_FILE)
+        return True
+
     # ──────────────────────────── Backups ────────────────────────────
     BACKUP_DIR = os.path.join(app.instance_path, "backups")
     BACKUP_INTERVAL_SECONDS = float(os.environ.get("BACKUP_INTERVAL_HOURS", "24")) * 3600
@@ -561,7 +611,8 @@ def create_app(test_config=None):
             "backup_dir": BACKUP_DIR,
             "backup_interval_hours": int(BACKUP_INTERVAL_SECONDS // 3600),
             "backup_keep": BACKUP_KEEP,
-            "datetime": datetime,
+            "status_settings": load_status_config(),
+                        "datetime": datetime,
         }
 
     def login_required(view):
@@ -982,6 +1033,19 @@ def create_app(test_config=None):
             as_attachment=True,
             download_name=filename,
         )
+
+    @app.route("/admin/status-settings", methods=["POST"])
+    @login_required
+    @admin_required
+    def admin_status_settings():
+        if save_status_config(
+            request.form.get("daily_time", ""),
+            request.form.get("poll_seconds", ""),
+        ):
+            flash_i18n("admin.status_settings.saved", "success")
+        else:
+            flash_i18n("admin.status_settings.invalid", "danger")
+        return redirect(url_for("admin_dashboard"))
 
     @app.route("/admin/reset-request/<int:request_id>/resolve", methods=["POST"])
     @login_required

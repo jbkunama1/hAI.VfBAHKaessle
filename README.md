@@ -68,6 +68,7 @@ Flask-Webapp mit SQLite-Backend für das AH-Bierkässle des VfB Grötzingen, ink
   - Sofort-Meldung bei neuen Einträgen und neuen Nutzern (Poll alle 30s).
   - Am Monatsende (31.) die Monatsübersicht.
   - Uhrzeit konfigurierbar über `STATUS_DAILY_TIME` (Standard: `23:00`), Poll-Intervall über `STATUS_POLL_SECONDS` (Standard: `30`).
+  - Alternativ im Admin-Panel unter "Telegram Statusmeldungen" konfigurierbar (Uhrzeit live, Poll-Intervall nach Bot-Neustart).
 
 ## Lokale Installation (ohne Docker)
 
