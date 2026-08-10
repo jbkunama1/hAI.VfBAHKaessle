@@ -639,6 +639,29 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 STATUS_STATE_FILE = os.path.join(os.path.dirname(DB_PATH), "status_state.json")
 
 
+def _status_daily_time() -> time:
+    """Uhrzeit der Tages-/Monatsmeldung, konfigurierbar per STATUS_DAILY_TIME (HH:MM)."""
+    raw = os.environ.get("STATUS_DAILY_TIME", "23:00")
+    try:
+        hour, minute = [int(p) for p in raw.split(":")]
+        return time(hour, minute)
+    except Exception:
+        print(f"[Status] Ungültiges STATUS_DAILY_TIME={raw!r}, verwende 23:00", file=sys.stderr)
+        return time(23, 0)
+
+
+def _status_poll_seconds() -> float:
+    """Poll-Intervall für neue Einträge, konfigurierbar per STATUS_POLL_SECONDS (Sekunden)."""
+    try:
+        value = float(os.environ.get("STATUS_POLL_SECONDS", "30"))
+        if value >= 5:
+            return value
+    except Exception:
+        pass
+    print("[Status] Ungültiges STATUS_POLL_SECONDS, verwende 30s", file=sys.stderr)
+    return 30.0
+
+
 def _load_status_state() -> dict:
     try:
         with open(STATUS_STATE_FILE, "r", encoding="utf-8") as fh:
@@ -969,9 +992,10 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(button_handler))
 
     # ── Automatische Statusnachrichten (nur an Admins) ──
-    app.job_queue.run_daily(_send_daily_summary, time=time(23, 0))
-    app.job_queue.run_repeating(_poll_new_items, interval=30, first=30)
-    app.job_queue.run_monthly(_send_monthly_summary, when=time(23, 0), day=31)
+    daily_time = _status_daily_time()
+    app.job_queue.run_daily(_send_daily_summary, time=daily_time)
+    app.job_queue.run_repeating(_poll_new_items, interval=_status_poll_seconds(), first=30)
+    app.job_queue.run_monthly(_send_monthly_summary, when=daily_time, day=31)
 
     app.run_polling()
 
