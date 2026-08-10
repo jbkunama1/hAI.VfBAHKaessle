@@ -63,6 +63,11 @@ Flask-Webapp mit SQLite-Backend für das AH-Bierkässle des VfB Grötzingen, ink
 - **Automatische Backups der SQLite-Datenbank**
   - Konfigurierbar über `BACKUP_INTERVAL_HOURS` (Standard: 24h) und `BACKUP_KEEP` (Standard: 10 Backups).
   - Backups werden in `instance/backups` im Container gespeichert und können über `/admin/backup/create` und `/admin/backup/download/<filename>` im Admin-Panel verwaltet werden.
+- **Automatische Statusnachrichten vom Telegram-Bot (nur an Admins)**
+  - Jeden Abend um 23:00 Uhr eine Tagesübersicht (Getränke, Umsatz, neue Nutzer).
+  - Sofort-Meldung bei neuen Einträgen und neuen Nutzern (Poll alle 30s).
+  - Am Monatsende (31.) die Monatsübersicht.
+  - Uhrzeit konfigurierbar über `STATUS_DAILY_TIME` (Standard: `23:00`), Poll-Intervall über `STATUS_POLL_SECONDS` (Standard: `30`).
 
 ## Lokale Installation (ohne Docker)
 
@@ -97,7 +102,9 @@ Danach im Browser: `http://localhost:1904`
    ```bash
    export TELEGRAM_BOT_TOKEN="DEIN_TELEGRAM_BOT_TOKEN"
    export BEER_PRICE="1.50"
-   python telegram_bot.py
+      export STATUS_DAILY_TIME="23:00"   # Uhrzeit der Tages-/Monatsübersicht (Standard: 23:00)
+      export STATUS_POLL_SECONDS="30"    # Poll-Intervall für neue Einträge in Sekunden (Standard: 30)
+      python telegram_bot.py
    ```
 
 Die Web-App und der Bot verwenden beide die SQLite-Datenbank im Ordner `instance/`.
@@ -181,9 +188,11 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - BEER_PRICE=${BEER_PRICE:-1.50}
-    volumes:
-      - bierkaessle_data:/app/instance
-    command: ["python", "telegram_bot.py"]
+          - STATUS_DAILY_TIME=${STATUS_DAILY_TIME:-23:00}
+          - STATUS_POLL_SECONDS=${STATUS_POLL_SECONDS:-30}
+        volumes:
+          - bierkaessle_data:/app/instance
+        command: ["python", "telegram_bot.py"]
     restart: unless-stopped
     depends_on:
       bierkaessle_web:
