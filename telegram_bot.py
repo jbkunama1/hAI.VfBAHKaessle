@@ -1,6 +1,8 @@
+import json
 import os
 import sqlite3
-from datetime import date
+import sys
+from datetime import date, time
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
@@ -632,6 +634,167 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("🍺 Hauptmenü", reply_markup=build_main_menu(admin))
 
 
+# ──────────────────────────── Automatische Statusnachrichten (an Admins) ────────────────────────────
+
+STATUS_STATE_FILE = os.path.join(os.path.dirname(DB_PATH), "status_state.json")
+
+
+def _load_status_state() -> dict:
+    try:
+        with open(STATUS_STATE_FILE, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"last_beer_id": 0, "last_user_id": 0}
+
+
+def _save_status_state(state: dict) -> None:
+    os.makedirs(os.path.dirname(STATUS_STATE_FILE), exist_ok=True)
+    tmp = STATUS_STATE_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(state, fh)
+    os.replace(tmp, STATUS_STATE_FILE)
+
+
+def _admin_telegram_ids() -> list[int]:
+    """Liefert die Telegram-IDs aller Admins, die den Bot verknüpft haben."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT telegram_id FROM users WHERE is_admin = 1 AND telegram_id IS NOT NULL"
+    ).fetchall()
+    conn.close()
+    ids = [r["telegram_id"] for r in rows]
+    if not ids:
+        admin_names = [n.strip() for n in os.environ.get("ADMIN_USERNAMES", "").split(",") if n.strip()]
+        if admin_names:
+            placeholders = ",".join("?" for _ in admin_names)
+            conn = get_conn()
+            rows = conn.execute(
+                f"SELECT telegram_id FROM users WHERE username IN ({placeholders}) AND telegram_id IS NOT NULL",
+                admin_names,
+            ).fetchall()
+            conn.close()
+            ids = [r["telegram_id"] for r in rows]
+    return ids
+
+
+async def _send_to_admins(context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
+    """Sendet eine Nachricht an alle Admin-Telegram-IDs."""
+    for tg_id in _admin_telegram_ids():
+        try:
+            await context.bot.send_message(chat_id=tg_id, text=text)
+        except Exception as exc:  # einzelner Fehler darf andere Admins nicht blockieren
+            print(f"[Status] Senden an {tg_id} fehlgeschlagen: {exc}", file=sys.stderr)
+
+
+async def _poll_new_items(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Meldet neue Nutzer und Einträge seit dem letzten Lauf an die Admins."""
+    first_run = not os.path.exists(STATUS_STATE_FILE)
+    state = _load_status_state()
+    last_beer = state.get("last_beer_id", 0)
+    last_user = state.get("last_user_id", 0)
+
+    conn = get_conn()
+    new_beers = conn.execute(
+        """
+        SELECT b.id, b.drinking_date, b.amount, b.drink_type, u.username
+        FROM beers b
+        JOIN users u ON u.id = b.user_id
+        WHERE b.id > ?
+        ORDER BY b.id ASC
+        """,
+        (last_beer,),
+    ).fetchall()
+    new_users = conn.execute(
+        "SELECT id, username FROM users WHERE id > ? ORDER BY id ASC",
+        (last_user,),
+    ).fetchall()
+    conn.close()
+
+    if new_beers:
+        state["last_beer_id"] = new_beers[-1]["id"]
+    if new_users:
+        state["last_user_id"] = new_users[-1]["id"]
+
+    if first_run:
+        # Beim ersten Start nur den Stand merken, keine Altlasten melden.
+        _save_status_state(state)
+        return
+
+    for u in new_users:
+        await _send_to_admins(
+            context,
+            f"🆕 Neuer Nutzer registriert: {u['username']}\n"
+            "→ Zum Verknüpfen mit dem Bot: /link <username>",
+        )
+    for b in new_beers:
+        label = DRINK_CATALOG.get(b["drink_type"], {}).get("label", b["drink_type"])
+        await _send_to_admins(
+            context,
+            f"🍺 Neuer Eintrag von {b['username']}:\n"
+            f"{b['amount']}× {label} am {b['drinking_date']}",
+        )
+
+    _save_status_state(state)
+
+
+async def _send_daily_summary(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Tägliche Zusammenfassung um 23 Uhr."""
+    today = date.today()
+    today_iso = today.isoformat()
+    conn = get_conn()
+    rows = conn.execute(
+        """
+        SELECT b.amount, b.drink_type, b.price_per_unit, u.username
+        FROM beers b
+        JOIN users u ON u.id = b.user_id
+        WHERE b.drinking_date = ?
+        """,
+        (today_iso,),
+    ).fetchall()
+    new_users = conn.execute(
+        "SELECT username FROM users WHERE date(created_at) = ?",
+        (today_iso,),
+    ).fetchall()
+    conn.close()
+
+    total_drinks = sum(r["amount"] for r in rows)
+    total_euros = sum(r["amount"] * r["price_per_unit"] for r in rows)
+    beers = sum(r["amount"] for r in rows if r["drink_type"] == "bier")
+    radler = sum(r["amount"] for r in rows if r["drink_type"] == "radler")
+    cola = sum(r["amount"] for r in rows if r["drink_type"] == "cola")
+    wasser = sum(r["amount"] for r in rows if r["drink_type"] == "wasser")
+
+    if total_drinks == 0 and not new_users:
+        return  # nichts zu melden
+
+    lines = [f"📊 Tagesübersicht {today_iso}:\n"]
+    if total_drinks > 0:
+        parts = [f"{total_drinks} Getränke"]
+        if beers:
+            parts.append(f"🍺 {beers}")
+        if radler:
+            parts.append(f"🍋 {radler}")
+        if cola:
+            parts.append(f"🥤 {cola}")
+        if wasser:
+            parts.append(f"💧 {wasser}")
+        lines.append(" | ".join(parts))
+        lines.append(f"💰 Umsatz: {total_euros:.2f} €")
+    if new_users:
+        lines.append(
+            f"🆕 Neue Nutzer: {', '.join(u['username'] for u in new_users)}"
+        )
+    await _send_to_admins(context, "\n".join(lines))
+
+
+async def _send_monthly_summary(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Monatsübersicht am Monatsende."""
+    ms = month_str_today()
+    rows = _query_month_overview(ms)
+    text = _format_overview(rows, ms)
+    await _send_to_admins(context, text)
+
+
 # ──────────────────────────── Admin ────────────────────────────
 
 async def admin_liste(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -790,6 +953,7 @@ def main() -> None:
 
     app.add_handler(CommandHandler("start",          start))
     app.add_handler(CommandHandler("help",           help_cmd))
+    app.add_handler(CommandHandler("menu",           menu))
     app.add_handler(CommandHandler("link",           link))
     app.add_handler(CommandHandler("bier",           bier))
     app.add_handler(CommandHandler("radler",         radler))
@@ -802,6 +966,12 @@ def main() -> None:
     app.add_handler(CommandHandler("admin_liste",    admin_liste))
     app.add_handler(CommandHandler("admin_offen",    admin_offen))
     app.add_handler(CommandHandler("admin_zahlung",  admin_zahlung))
+    app.add_handler(CallbackQueryHandler(button_handler))
+
+    # ── Automatische Statusnachrichten (nur an Admins) ──
+    app.job_queue.run_daily(_send_daily_summary, time=time(23, 0))
+    app.job_queue.run_repeating(_poll_new_items, interval=30, first=30)
+    app.job_queue.run_monthly(_send_monthly_summary, when=time(23, 0), day=31)
 
     app.run_polling()
 
