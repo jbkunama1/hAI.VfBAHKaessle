@@ -693,16 +693,16 @@ async def _status_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if is_last_day and state.get("last_monthly") != month_key:
         await _send_monthly_summary(context)
-        state["last_monthly"] = month_key
-        state["last_daily"] = today_iso # Monat deckt Tag ab
-        _save_status_state(state)
+        _update_status_state({  # Monat deckt Tag ab
+            "last_monthly": month_key,
+            "last_daily": today_iso,
+        })
         return
 
     # Tagesmeldung?
     if state.get("last_daily") != today_iso:
         await _send_daily_summary(context)
-        state["last_daily"] = today_iso
-        _save_status_state(state)
+        _update_status_state({"last_daily": today_iso})
 
 
 def _load_status_state() -> dict:
@@ -719,6 +719,14 @@ def _save_status_state(state: dict) -> None:
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(state, fh)
     os.replace(tmp, STATUS_STATE_FILE)
+
+
+def _update_status_state(patch: dict) -> None:
+    """Merged nur die uebergebenen Keys in den aktuellen Status und schreibt atomar.
+    Verhindert Lost-Update-Races zwischen Tick- und Poll-Job."""
+    state = _load_status_state()
+    state.update(patch)
+    _save_status_state(state)
 
 
 def _admin_telegram_ids() -> list[int]:
@@ -776,14 +784,15 @@ async def _poll_new_items(context: ContextTypes.DEFAULT_TYPE) -> None:
     ).fetchall()
     conn.close()
 
+    patch: dict = {}
     if new_beers:
-        state["last_beer_id"] = new_beers[-1]["id"]
+        patch["last_beer_id"] = new_beers[-1]["id"]
     if new_users:
-        state["last_user_id"] = new_users[-1]["id"]
+        patch["last_user_id"] = new_users[-1]["id"]
 
     if first_run:
         # Beim ersten Start nur den Stand merken, keine Altlasten melden.
-        _save_status_state(state)
+        _update_status_state(patch)
         return
 
     for u in new_users:
@@ -800,7 +809,7 @@ async def _poll_new_items(context: ContextTypes.DEFAULT_TYPE) -> None:
             f"{b['amount']}× {label} am {b['drinking_date']}",
         )
 
-    _save_status_state(state)
+    _update_status_state(patch)
 
 
 async def _send_daily_summary(context: ContextTypes.DEFAULT_TYPE) -> None:
