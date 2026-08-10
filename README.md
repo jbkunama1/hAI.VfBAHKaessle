@@ -189,11 +189,11 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - BEER_PRICE=${BEER_PRICE:-1.50}
-          - STATUS_DAILY_TIME=${STATUS_DAILY_TIME:-23:00}
-          - STATUS_POLL_SECONDS=${STATUS_POLL_SECONDS:-30}
-        volumes:
-          - bierkaessle_data:/app/instance
-        command: ["python", "telegram_bot.py"]
+      - STATUS_DAILY_TIME=${STATUS_DAILY_TIME:-23:00}
+      - STATUS_POLL_SECONDS=${STATUS_POLL_SECONDS:-30}
+    volumes:
+      - bierkaessle_data:/app/instance
+    command: ["python", "telegram_bot.py"]
     restart: unless-stopped
     depends_on:
       bierkaessle_web:
