@@ -67,7 +67,7 @@ Flask-Webapp mit SQLite-Backend für das AH-Bierkässle des VfB Grötzingen, ink
   - Jeden Abend um 23:00 Uhr eine Tagesübersicht (Getränke, Umsatz, neue Nutzer).
   - Sofort-Meldung bei neuen Einträgen und neuen Nutzern (Poll alle 30s).
   - Am Monatsende (31.) die Monatsübersicht.
-  - Uhrzeit konfigurierbar über `STATUS_DAILY_TIME` (Standard: `23:00`), Poll-Intervall über `STATUS_POLL_SECONDS` (Standard: `30`).
+  - Uhrzeit konfigurierbar über `STATUS_DAILY_TIME` (Standard: `23:00`), Poll-Intervall über `STATUS_POLL_SECONDS` (Standard: `30`, Minimum: `5` Sekunden; kleinere Werte fallen auf `30` zurück).
   - Alternativ im Admin-Panel unter "Telegram Statusmeldungen" konfigurierbar (Uhrzeit live, Poll-Intervall nach Bot-Neustart).
 
 ## Lokale Installation (ohne Docker)
@@ -104,7 +104,7 @@ Danach im Browser: `http://localhost:1904`
    export TELEGRAM_BOT_TOKEN="DEIN_TELEGRAM_BOT_TOKEN"
    export BEER_PRICE="1.50"
       export STATUS_DAILY_TIME="23:00"   # Uhrzeit der Tages-/Monatsübersicht (Standard: 23:00)
-      export STATUS_POLL_SECONDS="30"    # Poll-Intervall für neue Einträge in Sekunden (Standard: 30)
+      export STATUS_POLL_SECONDS="30"    # Poll-Intervall für neue Einträge in Sekunden (Standard: 30, Minimum: 5)
       python telegram_bot.py
    ```
 
