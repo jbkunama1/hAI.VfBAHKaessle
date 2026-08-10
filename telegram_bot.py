@@ -1,8 +1,10 @@
+import calendar
 import json
+import math
 import os
 import sqlite3
 import sys
-from datetime import date, time
+from datetime import date, datetime, time
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
@@ -637,6 +639,70 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # ──────────────────────────── Automatische Statusnachrichten (an Admins) ────────────────────────────
 
 STATUS_STATE_FILE = os.path.join(os.path.dirname(DB_PATH), "status_state.json")
+STATUS_CONFIG_FILE = os.path.join(os.path.dirname(DB_PATH), "status_config.json")
+
+def _load_status_config() -> dict:
+    """Lädt Status-Konfiguration vom Shared Volume (z.B. daily_time und poll_seconds)."""
+    try:
+        with open(STATUS_CONFIG_FILE, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def _status_daily_time() -> time:
+    """Uhrzeit der Tages-/Monatsmeldung, konfigurierbar per Admin-UI (status_config.json) oder STATUS_DAILY_TIME (HH:MM)."""
+    config = _load_status_config()
+    raw = config.get("daily_time") or os.environ.get("STATUS_DAILY_TIME") or "23:00"
+    try:
+        hour, minute = [int(p) for p in raw.split(":")]
+        return time(hour, minute)
+    except Exception:
+        print(f"[Status] Ungültiges STATUS_DAILY_TIME={raw!r}, verwende 23:00", file=sys.stderr)
+        return time(23, 0)
+
+
+def _status_poll_seconds() -> float:
+    """Poll-Intervall für neue Einträge, konfigurierbar per STATUS_POLL_SECONDS (Sekunden) ODER admin UI."""
+    config = _load_status_config()
+    try:
+        value = float(config.get("poll_seconds") or os.environ.get("STATUS_POLL_SECONDS") or "30")
+        if value >= 5 and math.isfinite(value):
+            return value
+    except Exception:
+        pass
+    print("[Status] Ungültiges STATUS_POLL_SECONDS, verwende 30s", file=sys.stderr)
+    return 30.0
+
+
+async def _status_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Tick-Job (jede Minute): prüft ob Tages-/Monatsmeldung fällig ist."""
+    now = datetime.now()
+    cfg_time = _status_daily_time()
+    # Nur zur konfigurierten Minute feuern
+    if now.hour != cfg_time.hour or now.minute != cfg_time.minute:
+        return
+
+    today_iso = date.today().isoformat()
+    state = _load_status_state()
+
+    # Monatsmeldung? (am letzten Tag des Monats)
+    last_day_of_month = calendar.monthrange(now.year, now.month)[1]
+    is_last_day = (now.day == last_day_of_month)
+    month_key = today_iso[:7]  # YYYY-MM
+
+    if is_last_day and state.get("last_monthly") != month_key:
+        await _send_monthly_summary(context)
+        _update_status_state({  # Monat deckt Tag ab
+            "last_monthly": month_key,
+            "last_daily": today_iso,
+        })
+        return
+
+    # Tagesmeldung?
+    if state.get("last_daily") != today_iso:
+        await _send_daily_summary(context)
+        _update_status_state({"last_daily": today_iso})
 
 
 def _load_status_state() -> dict:
@@ -653,6 +719,14 @@ def _save_status_state(state: dict) -> None:
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(state, fh)
     os.replace(tmp, STATUS_STATE_FILE)
+
+
+def _update_status_state(patch: dict) -> None:
+    """Merged nur die uebergebenen Keys in den aktuellen Status und schreibt atomar.
+    Verhindert Lost-Update-Races zwischen Tick- und Poll-Job."""
+    state = _load_status_state()
+    state.update(patch)
+    _save_status_state(state)
 
 
 def _admin_telegram_ids() -> list[int]:
@@ -710,14 +784,15 @@ async def _poll_new_items(context: ContextTypes.DEFAULT_TYPE) -> None:
     ).fetchall()
     conn.close()
 
+    patch: dict = {}
     if new_beers:
-        state["last_beer_id"] = new_beers[-1]["id"]
+        patch["last_beer_id"] = new_beers[-1]["id"]
     if new_users:
-        state["last_user_id"] = new_users[-1]["id"]
+        patch["last_user_id"] = new_users[-1]["id"]
 
     if first_run:
         # Beim ersten Start nur den Stand merken, keine Altlasten melden.
-        _save_status_state(state)
+        _update_status_state(patch)
         return
 
     for u in new_users:
@@ -734,7 +809,7 @@ async def _poll_new_items(context: ContextTypes.DEFAULT_TYPE) -> None:
             f"{b['amount']}× {label} am {b['drinking_date']}",
         )
 
-    _save_status_state(state)
+    _update_status_state(patch)
 
 
 async def _send_daily_summary(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -969,9 +1044,10 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(button_handler))
 
     # ── Automatische Statusnachrichten (nur an Admins) ──
-    app.job_queue.run_daily(_send_daily_summary, time=time(23, 0))
-    app.job_queue.run_repeating(_poll_new_items, interval=30, first=30)
-    app.job_queue.run_monthly(_send_monthly_summary, when=time(23, 0), day=31)
+    # Tick-Job prüft jede Minute, ob die tägliche/monatliche Meldung fällig ist (Live-Update fähig).
+    app.job_queue.run_repeating(_status_tick, interval=60, first=10)
+    # Poll-Job prüft auf neue Einträge (Interval benötigt Bot-Neustart).
+    app.job_queue.run_repeating(_poll_new_items, interval=_status_poll_seconds(), first=30)
 
     app.run_polling()
 
