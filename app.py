@@ -131,7 +131,181 @@ TRANSLATIONS = {
         "de": "{count} Eintrag/Eintr\u00e4ge f\u00fcr {username} ({ym}) als bezahlt markiert.",
         "en": "{count} entry/entries for {username} ({ym}) marked as paid.",
     },
-    "flash.bulk_pay_user_not_found": {
+    "flash.message_sent": {
+        "de": "Nachricht an {username} erfolgreich gesendet.",
+        "en": "Message sent to {username} successfully.",
+    },
+    "flash.message_empty": {
+        "de": "Bitte Nachrichtentext eingeben.",
+        "en": "Please enter message text.",
+    },
+    "flash.message_not_found": {
+        "de": "Nachricht nicht gefunden.",
+        "en": "Message not found.",
+    },
+    "flash.message_resolved": {
+        "de": "Nachricht wurde gelöst.",
+        "en": "Message resolved.",
+    },
+    "admin.messages_title": {
+        "de": "Admin-Nachrichten",
+        "en": "Admin messages",
+    },
+    "admin.messages_empty": {
+        "de": "Keine offenen Nachrichten.",
+        "en": "No open messages.",
+    },
+    "admin.messages_new": {
+        "de": "Neue Nachricht",
+        "en": "New message",
+    },
+    "admin.messages_mark_resolved": {
+        "de": "Als gelöst markieren",
+        "en": "Mark as resolved",
+    },
+    "admin.messages_back": {
+        "de": "Zurück zur Übersicht",
+        "en": "Back to overview",
+    },
+    "form.whatsapp": {"de": "WhatsApp", "en": "WhatsApp"},
+    "form.telegram_contact": {"de": "Telegram-Kontakt", "en": "Telegram contact"},
+    "form.whatsapp_contact": {"de": "WhatsApp-Kontakt", "en": "WhatsApp contact"},
+    "admin.backup.format_sqlite3": {
+        "de": "SQLite3-Datenbank (.sqlite3)",
+        "en": "SQLite3 database (.sqlite3)",
+    },
+    "admin.backup.format_json": {
+        "de": "JSON-Datei (.json)",
+        "en": "JSON file (.json)",
+    },
+    "admin.backup.format_md": {
+        "de": "Markdown-Datei (.md)",
+        "en": "Markdown file (.md)",
+    },
+    "admin.backup.format_txt": {
+        "de": "Text-Datei (.txt)",
+        "en": "Text file (.txt)",
+    },
+    "admin.backup.format_pdf": {
+        "de": "PDF-Datei (.pdf)",
+        "en": "PDF file (.pdf)",
+    },
+    "admin.backup.export_title": {
+        "de": "Backup exportieren",
+        "en": "Export backup",
+    },
+    "admin.backup.export_help": {
+        "de": "Wähle ein Format für den Backup-Export.",
+        "en": "Choose a format for the backup export.",
+    },
+    "admin.messages_own_notifications": {
+        "de": "Du erhältst Benachrichtigungen über neue Nachrichten per Telegram.",
+        "en": "You receive notifications about new messages via Telegram.",
+    },
+    "form.telegram_contact": {"de": "Telegram-Kontakt", "en": "Telegram contact"},
+    "form.whatsapp_contact": {"de": "WhatsApp-Kontakt", "en": "WhatsApp contact"},
+    "admin.backup.format_sqlite3": {
+        "de": "SQLite3-Datenbank (.sqlite3)",
+        "en": "SQLite3 database (.sqlite3)",
+    },
+    "admin.backup.format_json": {
+        "de": "JSON-Datei (.json)",
+        "en": "JSON file (.json)",
+    },
+    "admin.backup.format_md": {
+        "de": "Markdown-Datei (.md)",
+        "en": "Markdown file (.md)",
+    },
+    "admin.backup.format_txt": {
+        "de": "Text-Datei (.txt)",
+        "en": "Text file (.txt)",
+    },
+    "admin.backup.format_pdf": {
+        "de": "PDF-Datei (.pdf)",
+        "en": "PDF file (.pdf)",
+    },
+    "admin.backup.export_title": {
+        "de": "Backup exportieren",
+        "en": "Export backup",
+    },
+    "admin.backup.export_help": {
+        "de": "Wähle ein Format für den Backup-Export.",
+        "en": "Choose a format for the backup export.",
+    },
+    "admin.messages_own_notifications": {
+        "de": "Du erhältst Benachrichtigungen über neue Nachrichten per Telegram.",
+        "en": "You receive notifications about new messages via Telegram.",
+    },
+            "de": "Nachricht an {username} erfolgreich gesendet.",
+            "en": "Message sent to {username} successfully.",
+        },
+        "flash.message_empty": {
+            "de": "Bitte Nachrichtentext eingeben.",
+            "en": "Please enter message text.",
+        },
+        "flash.message_not_found": {
+            "de": "Nachricht nicht gefunden.",
+            "en": "Message not found.",
+        },
+        "flash.message_resolved": {
+            "de": "Nachricht wurde gelöst.",
+            "en": "Message resolved.",
+        },
+        "admin.messages_title": {
+            "de": "Admin-Nachrichten",
+            "en": "Admin messages",
+        },
+        "admin.messages_empty": {
+            "de": "Keine offenen Nachrichten.",
+            "en": "No open messages.",
+        },
+        "admin.messages_new": {
+            "de": "Neue Nachricht",
+            "en": "New message",
+        },
+        "admin.messages_mark_resolved": {
+            "de": "Als gelöst markieren",
+            "en": "Mark as resolved",
+        },
+        "admin.messages_back": {
+            "de": "Zur\u00fcck zur Übersicht",
+            "en": "Back to overview",
+        },
+        "form.whatsapp": {"de": "WhatsApp", "en": "WhatsApp"},
+        "form.telegram_contact": {"de": "Telegram-Kontakt", "en": "Telegram contact"},
+        "form.whatsapp_contact": {"de": "WhatsApp-Kontakt", "en": "WhatsApp contact"},
+        "admin.backup.format_sqlite3": {
+            "de": "SQLite3-Datenbank (.sqlite3)",
+            "en": "SQLite3 database (.sqlite3)",
+        },
+        "admin.backup.format_json": {
+            "de": "JSON-Datei (.json)",
+            "en": "JSON file (.json)",
+        },
+        "admin.backup.format_md": {
+            "de": "Markdown-Datei (.md)",
+            "en": "Markdown file (.md)",
+        },
+        "admin.backup.format_txt": {
+            "de": "Text-Datei (.txt)",
+            "en": "Text file (.txt)",
+        },
+        "admin.backup.format_pdf": {
+            "de": "PDF-Datei (.pdf)",
+            "en": "PDF file (.pdf)",
+        },
+        "admin.backup.export_title": {
+            "de": "Backup exportieren",
+            "en": "Export backup",
+        },
+        "admin.backup.export_help": {
+            "de": "Wähle ein Format für den Backup-Export.",
+            "en": "Choose a format for the backup export.",
+        },
+        "admin.messages_own_notifications": {
+            "de": "Du erhältst Benachrichtigungen über neue Nachrichten per Telegram.",
+            "en": "You receive notifications about new messages via Telegram.",
+        },
         "de": "User nicht gefunden oder keine Eintr\u00e4ge f\u00fcr diesen Monat.",
         "en": "User not found or no entries for this month.",
     },
@@ -340,6 +514,8 @@ def create_app(test_config=None):
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 telegram_id INTEGER UNIQUE,
+                telegram_contact TEXT,
+                whatsapp_contact TEXT,
                 is_admin INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -374,6 +550,18 @@ def create_app(test_config=None):
                 FOREIGN KEY(user_id) REFERENCES users(id),
                 FOREIGN KEY(resolved_by_user_id) REFERENCES users(id)
             );
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                message TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                resolved_at TIMESTAMP,
+                resolved_by_user_id INTEGER,
+                admin_reply TEXT,
+                FOREIGN KEY(user_id) REFERENCES users(id),
+                FOREIGN KEY(resolved_by_user_id) REFERENCES users(id)
+            );
             """
         )
         try:
@@ -394,6 +582,14 @@ def create_app(test_config=None):
             pass
         try:
             db.execute("ALTER TABLE users ADD COLUMN birthday DATE")
+        except Exception:
+            pass
+        try:
+            db.execute("ALTER TABLE users ADD COLUMN telegram_contact TEXT")
+        except Exception:
+            pass
+        try:
+            db.execute("ALTER TABLE users ADD COLUMN whatsapp_contact TEXT")
         except Exception:
             pass
         db.commit()
