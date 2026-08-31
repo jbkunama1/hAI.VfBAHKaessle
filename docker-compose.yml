@@ -35,5 +35,5 @@ services:
       bierkaessle_web:
         condition: service_healthy
 
-    volumes:
-      bierkaessle_data:
+volumes:
+  bierkaessle_data:
