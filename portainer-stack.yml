@@ -28,6 +28,9 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=
       - BEER_PRICE=
+      - STATUS_DAILY_TIME=
+      - STATUS_POLL_SECONDS=
+      - TZ=Europe/Berlin
     volumes:
       - bierkaessle_data:/app/instance
     command: ["python", "telegram_bot.py"]

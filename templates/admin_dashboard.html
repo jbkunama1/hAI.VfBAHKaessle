@@ -160,6 +160,25 @@
 {% endif %}
 <p class="text-muted small">{{ t('admin.backup.help', hours=backup_interval_hours, keep=backup_keep) }}</p>
 
+<h2 class="h5 mt-4">{{ t('admin.status_settings') }}</h2>
+<form method="post" action="{{ url_for('admin_status_settings') }}" class="row g-2 mb-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="col-auto">
+        <label for="daily_time" class="form-label small mb-1">{{ t('admin.status_settings.daily_time') }}</label>
+        <input type="time" name="daily_time" id="daily_time" class="form-control form-control-sm"
+               value="{{ status_settings.get('daily_time', '23:00') }}" required>
+    </div>
+    <div class="col-auto">
+        <label for="poll_seconds" class="form-label small mb-1">{{ t('admin.status_settings.poll_seconds') }}</label>
+        <input type="number" name="poll_seconds" id="poll_seconds" class="form-control form-control-sm"
+               value="{{ status_settings.get('poll_seconds', 30) }}" min="5" step="1" required>
+    </div>
+    <div class="col-auto align-self-end">
+        <button type="submit" class="btn btn-sm btn-primary">{{ t('admin.status_settings.save') }}</button>
+    </div>
+</form>
+<p class="text-muted small">{{ t('admin.status_settings.time_hint') }} &middot; {{ t('admin.status_settings.poll_hint') }}</p>
+
 <h2 class="h5 mt-4">{{ t('admin.latest_entries_global') }}</h2>
 <table class="table table-striped">
     <thead>
